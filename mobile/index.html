@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LGP Tradutor — Língua Gestual Portuguesa</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00e5a0">
+<link rel="apple-touch-icon" href="icone.png">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --card: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #00e5a0;
+    --accent2: #7c5cfc;
+    --text: #f0f0f5;
+    --muted: #6b6b80;
+    --danger: #ff4f6a;
+    --warn: #ffb830;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── BACKGROUND ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(124,92,252,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 35% at 10% 90%, rgba(0,229,160,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+  /* ── HEADER ── */
+  header {
+    padding: 2.5rem 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2.5rem;
+  }
+  .logo-mark {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border-radius: 12px;
+    display: grid; place-items: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
+  header p { font-size: 0.8rem; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 0.5rem; margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+  }
+  .tab {
+    padding: 0.65rem 1.2rem;
+    border: none; background: none;
+    color: var(--muted); font-family: 'Syne', sans-serif;
+    font-size: 0.85rem; font-weight: 700; letter-spacing: 0.04em;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .card-title {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .card-title span { font-size: 1rem; }
+
+  /* ── ROADMAP ── */
+  .roadmap { display: flex; flex-direction: column; gap: 0; }
+
+  .phase {
+    display: grid; grid-template-columns: 56px 1fr;
+    gap: 0 1.2rem; position: relative;
+  }
+  .phase:not(:last-child) .phase-line::after {
+    content: ''; position: absolute;
+    left: 27px; top: 56px; bottom: 0; width: 2px;
+    background: var(--border);
+  }
+  .phase-line { position: relative; display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+  .phase-dot {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 1rem; font-weight: 800;
+    flex-shrink: 0; z-index: 1;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+  }
+  .phase-dot.done { background: var(--accent); border-color: var(--accent); color: #000; }
+  .phase-dot.active-phase { background: var(--accent2); border-color: var(--accent2); color: #fff; box-shadow: 0 0 0 4px rgba(124,92,252,0.2); }
+  .phase-dot.pending { color: var(--muted); }
+
+  .phase-content { padding: 0 0 2rem; }
+  .phase-header {
+    display: flex; align-items: baseline; gap: 0.75rem;
+    margin-bottom: 0.4rem; flex-wrap: wrap;
+  }
+  .phase-name { font-size: 1rem; font-weight: 700; }
+  .phase-time {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    color: var(--muted);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .phase-desc { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.8rem; line-height: 1.6; }
+
+  .steps { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+  .steps li {
+    display: flex; align-items: flex-start; gap: 0.6rem;
+    font-size: 0.82rem; color: #c0c0d0; line-height: 1.5;
+  }
+  .steps li::before {
+    content: '→'; color: var(--accent2); flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .tip {
+    margin-top: 0.8rem;
+    background: rgba(0,229,160,0.06);
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: 10px;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.78rem; color: #a0e8cc; line-height: 1.5;
+  }
+  .tip strong { color: var(--accent); }
+
+  .warn-box {
+    margin-top: 0.8rem;
+    background: rgba(255,184,48,0.06);
+    border: 1px solid rgba(255,184,48,0.25);
+    border-radius: 10px;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.78rem; color: #ffe0a0; line-height: 1.5;
+  }
+  .warn-box strong { color: var(--warn); }
+
+  /* ── PHASE 2 BADGE ── */
+  .phase2-badge {
+    display: inline-block; margin-top: 0.6rem;
+    background: rgba(124,92,252,0.12); border: 1px solid rgba(124,92,252,0.3);
+    color: #b8a0ff; font-size: 0.72rem; font-family: 'DM Mono', monospace;
+    padding: 3px 10px; border-radius: 20px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── APP PANEL ── */
+  .app-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 620px) { .app-layout { grid-template-columns: 1fr; } }
+
+  .cam-wrap {
+    background: #000;
+    border-radius: 14px; overflow: hidden;
+    aspect-ratio: 4/3;
+    position: relative;
+    border: 2px solid var(--border);
+  }
+  .cam-wrap video, .cam-wrap canvas {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .cam-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 0.5rem;
+    background: rgba(10,10,15,0.85);
+    font-size: 0.85rem; color: var(--muted); text-align: center;
+    padding: 1rem;
+  }
+  .cam-overlay .big-icon { font-size: 2.5rem; }
+  .cam-overlay p { line-height: 1.5; font-size: 0.8rem; }
+
+  .result-panel { display: flex; flex-direction: column; gap: 1rem; }
+
+  .result-box {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    text-align: center;
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 0.5rem;
+  }
+  .result-label {
+    font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); font-weight: 700;
+  }
+  .result-word {
+    font-size: 2.8rem; font-weight: 800; letter-spacing: -0.03em;
+    color: var(--text); min-height: 3.5rem;
+    display: flex; align-items: center;
+    transition: all 0.3s;
+  }
+  .result-word.detected { color: var(--accent); }
+  .result-conf {
+    font-family: 'DM Mono', monospace; font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .bar-list { width: 100%; display: flex; flex-direction: column; gap: 0.4rem; }
+  .bar-row { display: flex; align-items: center; gap: 0.6rem; }
+  .bar-row-label { font-family: 'DM Mono', monospace; font-size: 0.72rem; width: 28px; color: var(--muted); }
+  .bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; background: var(--accent2); transition: width 0.25s ease; width: 0%; }
+  .bar-fill.top { background: var(--accent); }
+  .bar-pct { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); width: 36px; text-align: right; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: 10px; border: none;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem;
+    cursor: pointer; transition: all 0.2s; letter-spacing: 0.02em;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-danger { background: rgba(255,79,106,0.1); color: var(--danger); border: 1px solid rgba(255,79,106,0.3); }
+  .btn-danger:hover { background: rgba(255,79,106,0.2); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
+
+  .btn-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+  /* ── URL INPUT ── */
+  .input-group { display: flex; gap: 0.5rem; }
+  .input-group input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.65rem 1rem;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.8rem;
+    outline: none; transition: border-color 0.2s;
+  }
+  .input-group input:focus { border-color: var(--accent2); }
+  .input-group input::placeholder { color: var(--muted); }
+
+  /* ── STATUS ── */
+  .status {
+    font-family: 'DM Mono', monospace; font-size: 0.75rem;
+    padding: 0.5rem 0.9rem; border-radius: 8px;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+  }
+  .status.ok { background: rgba(0,229,160,0.1); color: var(--accent); border: 1px solid rgba(0,229,160,0.25); }
+  .status.loading { background: rgba(124,92,252,0.1); color: #b8a0ff; border: 1px solid rgba(124,92,252,0.25); }
+  .status.err { background: rgba(255,79,106,0.1); color: var(--danger); border: 1px solid rgba(255,79,106,0.3); }
+  .pulse { animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── GUIDE PANEL ── */
+  .guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+  .guide-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .guide-card h3 { font-size: 0.85rem; font-weight: 700; }
+  .guide-card p { font-size: 0.77rem; color: var(--muted); line-height: 1.5; }
+  .guide-card a { color: var(--accent2); font-size: 0.75rem; font-family: 'DM Mono', monospace; word-break: break-all; }
+
+  .alphabet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 0.5rem; margin-top: 0.75rem;
+  }
+  .letter-chip {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.5rem;
+    text-align: center; font-weight: 800; font-size: 1.1rem;
+    color: var(--muted); cursor: default;
+    transition: all 0.2s;
+  }
+  .letter-chip:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── FOOTER ── */
+  footer {
+    margin-top: 3rem; padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 0.5rem;
+    font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace;
+  }
+  .badge-stack { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .badge {
+    padding: 2px 8px; border-radius: 20px; font-size: 0.68rem;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-mark">🤟</div>
+    <div>
+      <h1>LGP Tradutor</h1>
+      <p>Língua Gestual Portuguesa → Texto · Alt July 2026</p>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('roadmap')">📋 Roadmap</button>
+    <button class="tab" onclick="switchTab('app')">📷 Tradutor</button>
+    <button class="tab" onclick="switchTab('guide')">📚 Guia Teachable Machine</button>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       PAINEL 1 — ROADMAP
+  ════════════════════════════════════════ -->
+  <div id="panel-roadmap" class="panel active">
+
+    <div class="card">
+      <div class="card-title"><span>🎯</span> Objetivo do Projeto</div>
+      <p style="font-size:0.9rem; line-height:1.7; color:#c0c0d0;">
+        Criar uma aplicação web que usa a câmara do dispositivo para reconhecer gestos da
+        <strong>Língua Gestual Portuguesa (LGP)</strong> e os traduz para texto em tempo real.
+        O modelo de reconhecimento é treinado pelos próprios alunos no browser, sem instalar nada.
+        Fase 1 foca texto. Fase 2 (futura) adiciona voz.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>⏱</span> Distribuição de 15 horas</div>
+      <div class="roadmap">
+
+        <!-- FASE 1 -->
+        <div class="phase">
+          <div class="phase-line">
+            <div class="phase-dot active-phase">F1</div>
+          </div>
+          <div class="phase-content">
+            <div class="phase-header">
+              <span class="phase-name">Descoberta e Contexto</span>
+              <span class="phase-time">2h</span>
+            </div>
+            <p class="phase-desc">
+              Antes de programar, perceber <em>o quê</em> e <em>o porquê</em>.
+              A LGP é uma língua completa com gramática própria — não é só traduzir letras.
+            </p>
+            <ul class="steps">
+              <li>Ver um vídeo curto sobre LGP e comunidade surda em Portugal</li>
+              <li>Conhecer o alfabeto manual português (dactilologia) — 26 letras + dígitos</li>
+              <li>Decidir em grupo o subconjunto a traduzir: <strong>letras A–Z</strong> (mais fácil) ou <strong>10 palavras simples</strong> (mais impacto)</li>
+              <li>Criar conta Google (necessária para o Teachable Machine)</li>
+              <li>Abrir o Teachable Machine pela primeira vez e explorar a interface</li>
+            </ul>
+            <div class="tip">
+              <strong>💡 Recomendação:</strong> Começar só com <strong>5 letras</strong> (A, B, C, D, E) nas primeiras sessões. Um modelo com 5 classes bem treinadas é melhor que 26 classes mal treinadas.
+            </div>
+          </div>
+        </div>
+
+        <!-- FASE 2 -->
+        <div class="phase">
+          <div class="phase-line">
+            <div class="phase-dot active-phase">F2</div>
+          </div>
+          <div class="phase-content">
+            <div class="phase-header">
+              <span class="phase-name">Recolha de Dados e Treino do Modelo</span>
+              <span class="phase-time">3h</span>
+            </div>
+            <p class="phase-desc">
+              Esta é a fase mais importante. Um modelo de ML só é bom se tiver dados variados.
+              Cada aluno contribui com fotos dos seus próprios gestos.
+            </p>
+            <ul class="steps">
+              <li>Ir a <strong>teachablemachine.withgoogle.com</strong> → New Project → Image Project → Standard</li>
+              <li>Criar uma classe por letra/palavra (ex: "A", "B", "C", "Olá", "Obrigado")</li>
+              <li>Para cada classe: tirar <strong>mínimo 50 fotos</strong> com a câmara do browser</li>
+              <li>Variar: fundo diferente, luz diferente, ângulo ligeiramente diferente, mão esquerda e direita</li>
+              <li>Adicionar uma classe "Nenhum" com fotos sem gesto (reduz falsos positivos)</li>
+              <li>Clicar <strong>Train Model</strong> e aguardar (pode demorar 2–5 minutos)</li>
+              <li>Testar no preview do Teachable Machine antes de exportar</li>
+            </ul>
+            <div class="warn-box">
+              <strong>⚠️ Erro comum:</strong> Tirar poucas fotos ou sempre no mesmo fundo. O modelo vai funcionar só nesse fundo. Variedade é fundamental.
+            </div>
+            <div class="tip">
+              <strong>💡 Dataset extra:</strong> Podes adicionar imagens do alfabeto LGP já existentes para reforçar o treino. Ver separador "Guia" para recursos.
+            </div>
+          </div>
+        </div>
+
+        <!-- FASE 3 -->
+        <div class="phase">
+          <div class="phase-line">
+            <div class="phase-dot active-phase">F3</div>
+          </div>
+          <div class="phase-content">
+            <div class="phase-header">
+              <span class="phase-name">Exportar Modelo e Ligar à App</span>
+              <span class="phase-time">2h</span>
+            </div>
+            <p class="phase-desc">
+              O Teachable Machine gera um link com o modelo. A nossa app carrega esse link e começa a reconhecer gestos.
+            </p>
+            <ul class="steps">
+              <li>No Teachable Machine: <strong>Export Model → Tensorflow.js → Upload (shareable link)</strong></li>
+              <li>Copiar o URL gerado (parece-se com <code style="font-family:monospace;font-size:0.75rem;">https://teachablemachine.withgoogle.com/models/yRu8axD3u/</code>)</li>
+              <li>Ir ao separador <strong>"Tradutor"</strong> desta app</li>
+              <li>Colar o URL no campo e clicar <strong>"Carregar Modelo"</strong></li>
+              <li>Quando aparecer "Modelo carregado ✓", clicar <strong>"Iniciar Câmara"</strong></li>
+              <li>Fazer o gesto em frente à câmara e ver o resultado aparecer</li>
+            </ul>
+            <div class="tip">
+              <strong>💡 O URL é o modelo.</strong> Podes partilhar o link do modelo com toda a turma — cada um cola na sua cópia da app e fica a funcionar.
+            </div>
+          </div>
+        </div>
+
+        <!-- FASE 4 -->
+        <div class="phase">
+          <div class="phase-line">
+            <div class="phase-dot pending">F4</div>
+          </div>
+          <div class="phase-content">
+            <div class="phase-header">
+              <span class="phase-name">Melhorar e Personalizar</span>
+              <span class="phase-time">5h</span>
+            </div>
+            <p class="phase-desc">
+              Com o básico a funcionar, melhorar a app: mais gestos, melhor interface, mais dados no modelo.
+            </p>
+            <ul class="steps">
+              <li>Adicionar mais letras ou palavras ao modelo (re-treinar e re-exportar)</li>
+              <li>Personalizar cores, título, e aspeto da app</li>
+              <li>Adicionar histórico de gestos detetados (lista de palavras)</li>
+              <li>Testar com utilizadores que não participaram no treino — ver o que falha</li>
+              <li>Ajustar o limiar de confiança (threshold) para reduzir erros</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- FASE 5 -->
+        <div class="phase">
+          <div class="phase-line">
+            <div class="phase-dot pending">F5</div>
+          </div>
+          <div class="phase-content">
+            <div class="phase-header">
+              <span class="phase-name">Publicar e Apresentar</span>
+              <span class="phase-time">3h</span>
+            </div>
+            <p class="phase-desc">
+              Publicar a app online para que qualquer pessoa possa usar, e apresentar ao grupo.
+            </p>
+            <ul class="steps">
+              <li>Colocar o ficheiro HTML no GitHub Pages (arrasta e larga)</li>
+              <li>Testar no telemóvel — abrir o link, câmara funciona? Instalar como PWA</li>
+              <li>Preparar uma demo de 3 minutos: problema → solução → demo ao vivo → o que aprendemos</li>
+              <li>Reflexão: o que correu bem? O que mudarias? Que impacto pode ter na vida real?</li>
+            </ul>
+            <div class="tip">
+              <strong>💡 Ideia bónus:</strong> Convidar alguém da comunidade surda para testar a app e dar feedback real.
+            </div>
+            <div class="phase2-badge">🔊 FASE 2 FUTURA — Síntese de voz (Web Speech API)</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RESUMO TÉCNICO -->
+    <div class="card">
+      <div class="card-title"><span>🛠</span> Stack Técnica — Tudo no Browser, Zero Instalações</div>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>🧠 Teachable Machine</h3>
+          <p>Treina o modelo de visão no browser. Sem código. Exporta para a web.</p>
+          <a href="https://teachablemachine.withgoogle.com" target="_blank">teachablemachine.withgoogle.com</a>
+        </div>
+        <div class="guide-card">
+          <h3>⚡ TensorFlow.js</h3>
+          <p>Corre o modelo dentro do browser. Não precisa de servidor. Carregado automaticamente.</p>
+        </div>
+        <div class="guide-card">
+          <h3>📷 WebRTC / getUserMedia</h3>
+          <p>API nativa do browser para aceder à câmara. Funciona em Chrome, Safari, Firefox.</p>
+        </div>
+        <div class="guide-card">
+          <h3>🌐 GitHub Pages</h3>
+          <p>Publicação gratuita. Arrasta o ficheiro HTML, fica online em segundos.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════
+       PAINEL 2 — APP / TRADUTOR
+  ════════════════════════════════════════ -->
+  <div id="panel-app" class="panel">
+
+    <div class="card">
+      <div class="card-title"><span>🔗</span> Passo 1 — Carregar o teu Modelo</div>
+      <p style="font-size:0.82rem; color:var(--muted); margin-bottom:1rem; line-height:1.6;">
+        Cola aqui o URL do modelo que exportaste do Teachable Machine.<br>
+        Formato: <code style="font-family:monospace; color:#b8a0ff;">https://teachablemachine.withgoogle.com/models/XXXXXXX/</code>
+      </p>
+      <div class="input-group">
+        <input type="text" id="model-url" placeholder="https://teachablemachine.withgoogle.com/models/..." />
+        <button class="btn btn-primary" onclick="loadModel()">Carregar</button>
+      </div>
+      <div style="margin-top:0.75rem;" id="model-status">
+        <span class="status loading pulse">⏳ À espera do URL do modelo</span>
+      </div>
+      <div style="margin-top:0.75rem;">
+        <p style="font-size:0.75rem; color:var(--muted);">Para testar sem modelo próprio, podes usar este modelo de demonstração (ASL — inglês):</p>
+        <button class="btn btn-secondary" style="margin-top:0.4rem; font-size:0.75rem; padding:0.4rem 0.8rem;"
+          onclick="document.getElementById('model-url').value='https://teachablemachine.withgoogle.com/models/XXXXXXXXX/'">
+          Usar modelo de demonstração
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>📷</span> Passo 2 — Câmara e Tradução</div>
+
+      <div class="app-layout">
+        <!-- CÂMARA -->
+        <div>
+          <div class="cam-wrap" id="cam-wrap">
+            <div class="cam-overlay" id="cam-overlay">
+              <div class="big-icon">📷</div>
+              <p>Câmara inativa.<br>Carrega um modelo primeiro,<br>depois clica <strong>"Iniciar Câmara"</strong>.</p>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:0.75rem;">
+            <button class="btn btn-primary" id="btn-start" onclick="startCamera()" disabled>Iniciar Câmara</button>
+            <button class="btn btn-danger" id="btn-stop" onclick="stopCamera()" disabled>Parar</button>
+             <button class="btn btn-secondary" id="btn-mute" onclick="toggleMute()">🔊 Voz</button>
+          </div>
+        </div>
+
+        <!-- RESULTADOS -->
+        <div class="result-panel">
+          <div class="result-box">
+            <div class="result-label">Gesto detetado</div>
+            <div class="result-word" id="result-word">—</div>
+            <div class="result-conf" id="result-conf">confiança: —</div>
+          </div>
+
+          <div class="card" style="margin:0; padding:1rem;">
+            <div class="card-title" style="margin-bottom:0.6rem;"><span>📊</span> Probabilidades</div>
+            <div class="bar-list" id="bar-list">
+              <p style="font-size:0.78rem; color:var(--muted);">As barras aparecerão após carregar o modelo.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem;">
+        <div class="card-title"><span>📝</span> Histórico desta sessão</div>
+        <div id="history" style="font-family:'DM Mono',monospace; font-size:0.82rem; color:var(--muted); min-height:2rem; line-height:2; word-spacing:0.4rem;">
+          (sem deteções ainda)
+        </div>
+        <button class="btn btn-secondary" style="margin-top:0.5rem; font-size:0.75rem; padding:0.4rem 0.8rem;" onclick="clearHistory()">Limpar histórico</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════
+       PAINEL 3 — GUIA
+  ════════════════════════════════════════ -->
+  <div id="panel-guide" class="panel">
+
+    <div class="card">
+      <div class="card-title"><span>🎓</span> Como usar o Teachable Machine — Passo a Passo</div>
+      <ul class="steps" style="gap:0.6rem;">
+        <li>Abre <strong>teachablemachine.withgoogle.com</strong> no Chrome</li>
+        <li>Clica em <strong>"Get Started"</strong> → <strong>"Image Project"</strong> → <strong>"Standard image model"</strong></li>
+        <li>Cada <strong>"Class"</strong> é uma letra ou palavra. Muda o nome clicando no título (ex: "Class 1" → "A")</li>
+        <li>Dentro de cada classe, clica em <strong>"Webcam"</strong> e mantém premido o botão para tirar fotos (mínimo 50)</li>
+        <li>Adiciona uma classe chamada <strong>"Nenhum"</strong> e tira fotos sem fazer nenhum gesto</li>
+        <li>Quando tiveres todas as classes, clica em <strong>"Train Model"</strong> no painel central</li>
+        <li>Aguarda o treino. Depois testa no painel "Preview" à direita</li>
+        <li>Se estiver bom: <strong>"Export Model"</strong> → <strong>"Tensorflow.js"</strong> → <strong>"Upload (shareable link)"</strong> → copia o URL</li>
+        <li>Cola esse URL no separador <strong>"Tradutor"</strong> desta app e clica "Carregar"</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>🖼</span> Recursos de Imagens para Treino</div>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>Alfabeto Manual LGP</h3>
+          <p>Imagens do alfabeto gestual português para usar como dados adicionais de treino.</p>
+          <a href="https://www.infopedia.pt/dicionarios/lingua-gestual" target="_blank">Infopédia — LGP</a>
+        </div>
+        <div class="guide-card">
+          <h3>Dataset ASL (Kaggle)</h3>
+          <p>Dataset grande de língua gestual americana. Útil para praticar, mesmo não sendo LGP.</p>
+          <a href="https://www.kaggle.com/datasets/grassknoted/asl-alphabet" target="_blank">kaggle.com (requer conta)</a>
+        </div>
+        <div class="guide-card">
+          <h3>Associação Portuguesa Surdos</h3>
+          <p>Materiais oficiais e vídeos de referência em LGP.</p>
+          <a href="https://www.aps.pt" target="_blank">aps.pt</a>
+        </div>
+        <div class="guide-card">
+          <h3>Spread the Sign</h3>
+          <p>Dicionário de gestos em vídeo, inclui LGP.</p>
+          <a href="https://www.spreadthesign.com/pt.pt/search/" target="_blank">spreadthesign.com</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>🔤</span> Alfabeto Manual Português (Dactilologia)</div>
+      <p style="font-size:0.8rem; color:var(--muted); margin-bottom:0.5rem;">Começa por treinar estas letras. Sugere-se começar com A, B, C, D, E.</p>
+      <div class="alphabet-grid" id="alpha-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>✅</span> Boas Práticas para um Modelo Preciso</div>
+      <ul class="steps" style="gap:0.7rem;">
+        <li><strong>Quantidade:</strong> Pelo menos 50 fotos por classe. 100+ é melhor.</li>
+        <li><strong>Variedade de fundo:</strong> Tira fotos com fundo branco, fundo escuro, fundo com janela, etc.</li>
+        <li><strong>Variedade de luz:</strong> Com luz artificial, perto de janela, luz fraca.</li>
+        <li><strong>Ambas as mãos:</strong> Mão direita E mão esquerda, se possível.</li>
+        <li><strong>Vários alunos:</strong> Se dois alunos fotografam o mesmo gesto, o modelo generaliza melhor.</li>
+        <li><strong>Classe "Nenhum":</strong> Obrigatória! Sem ela, o modelo tenta sempre detetar algo.</li>
+        <li><strong>Iteração:</strong> Se o modelo erra sempre numa letra, adiciona mais fotos dessa letra e re-treina.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>LGP Tradutor · Alt July 2026 · Coimbra</span>
+    <div class="badge-stack">
+      <span class="badge">TensorFlow.js</span>
+      <span class="badge">Teachable Machine</span>
+      <span class="badge">WebRTC</span>
+      <span class="badge">Zero instalações</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ══ STATE ══
+let model = null;
+let webcam = null;
+let animFrame = null;
+let isRunning = false;
+let history = [];
+let lastDetected = '';
+let lastDetectedTime = 0;
+const THRESHOLD = 0.75;
+const DEBOUNCE_MS = 1500;
+
+let vozAtiva = true;          // controla o botão mute
+let ultimaPalavraFalada = ''; // evita repetir a mesma palavra seguida
+
+// ══ TABS ══
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const panels = ['roadmap','app','guide'];
+    t.classList.toggle('active', panels[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ══ ALPHABET GRID ══
+(function() {
+  const grid = document.getElementById('alpha-grid');
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(l => {
+    const d = document.createElement('div');
+    d.className = 'letter-chip'; d.textContent = l;
+    grid.appendChild(d);
+  });
+})();
+
+// ══ LOAD MODEL ══
+async function loadModel() {
+  const url = document.getElementById('model-url').value.trim();
+  if (!url) { setStatus('err', '❌ Cola um URL primeiro'); return; }
+
+  setStatus('loading', '⏳ A carregar modelo...');
+  try {
+    const modelURL = url.endsWith('/') ? url + 'model.json' : url + '/model.json';
+    const metaURL  = url.endsWith('/') ? url + 'metadata.json' : url + '/metadata.json';
+    model = await tmImage.load(modelURL, metaURL);
+    setStatus('ok', '✅ Modelo carregado — ' + model.getTotalClasses() + ' classes');
+    document.getElementById('btn-start').disabled = false;
+    buildBars();
+  } catch(e) {
+    setStatus('err', '❌ Erro: ' + e.message);
+  }
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById('model-status');
+  el.innerHTML = `<span class="status ${type} ${type==='loading'?'pulse':''}">${msg}</span>`;
+}
+
+// ══ BUILD BARS ══
+function buildBars() {
+  if (!model) return;
+  const classes = model.getClassLabels();
+  const list = document.getElementById('bar-list');
+  list.innerHTML = '';
+  classes.forEach((cls, i) => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-row-label">${cls.substring(0,4)}</div>
+      <div class="bar-track"><div class="bar-fill" id="bar-${i}"></div></div>
+      <div class="bar-pct" id="pct-${i}">0%</div>`;
+    list.appendChild(row);
+  });
+}
+
+// ══ CAMERA ══
+async function startCamera() {
+  if (!model) return;
+  const wrap = document.getElementById('cam-wrap');
+
+  document.getElementById('cam-overlay').style.display = 'none';
+
+  webcam = new tmImage.Webcam(wrap.clientWidth || 400, 300, true);
+  await webcam.setup();
+  await webcam.play();
+  wrap.appendChild(webcam.canvas);
+
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+  isRunning = true;
+  predict();
+}
+
+function stopCamera() {
+  isRunning = false;
+  cancelAnimationFrame(animFrame);
+  if (webcam) { webcam.stop(); webcam = null; }
+  const wrap = document.getElementById('cam-wrap');
+  const canvas = wrap.querySelector('canvas');
+  if (canvas) canvas.remove();
+  document.getElementById('cam-overlay').style.display = 'flex';
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+  document.getElementById('result-word').textContent = '—';
+  document.getElementById('result-conf').textContent = 'confiança: —';
+}
+
+// ══ PREDICT LOOP ══
+async function predict() {
+  if (!isRunning || !model || !webcam) return;
+  webcam.update();
+
+  const preds = await model.predict(webcam.canvas);
+  const best = preds.reduce((a,b) => a.probability > b.probability ? a : b);
+
+  // Update bars
+  preds.forEach((p, i) => {
+    const bar = document.getElementById('bar-' + i);
+    const pct = document.getElementById('pct-' + i);
+    if (bar) {
+      const v = Math.round(p.probability * 100);
+      bar.style.width = v + '%';
+      bar.classList.toggle('top', p.className === best.className);
+      pct.textContent = v + '%';
+    }
+  });
+
+  const wordEl = document.getElementById('result-word');
+  const confEl = document.getElementById('result-conf');
+
+  if (best.probability >= THRESHOLD && best.className.toLowerCase() !== 'nenhum') {
+    wordEl.textContent = best.className;
+    wordEl.classList.add('detected');
+    confEl.textContent = 'confiança: ' + Math.round(best.probability * 100) + '%';
+
+    const now = Date.now();
+    if (best.className !== lastDetected || now - lastDetectedTime > DEBOUNCE_MS) {
+      lastDetected = best.className;
+      lastDetectedTime = now;
+      addToHistory(best.className);
+      falar(best.className);    // ← LINHA NOVA
+    }
+  } else {
+    wordEl.textContent = '—';
+    wordEl.classList.remove('detected');
+    confEl.textContent = 'confiança: abaixo do limiar';
+  }
+
+  animFrame = requestAnimationFrame(predict);
+}
+
+// ══ HISTORY ══
+function addToHistory(word) {
+  history.push(word);
+  const el = document.getElementById('history');
+  el.textContent = history.join('  ');
+  el.style.color = 'var(--text)';
+}
+
+function clearHistory() {
+  history = [];
+  const el = document.getElementById('history');
+  el.textContent = '(sem deteções ainda)';
+  el.style.color = 'var(--muted)';
+}
+
+// ══ VOZ ══
+function falar(texto) {
+  if (!vozAtiva) return;
+  if (texto === ultimaPalavraFalada) return; // não repetir a mesma
+
+  window.speechSynthesis.cancel(); // para qualquer fala anterior
+  const u = new SpeechSynthesisUtterance(texto);
+  u.lang   = 'pt-PT';  // voz portuguesa
+  u.rate   = 0.9;      // velocidade (1 = normal, 0.8 = mais lento)
+  u.pitch  = 1;        // tom (1 = normal)
+  u.volume = 1;
+  window.speechSynthesis.speak(u);
+
+  ultimaPalavraFalada = texto;
+}
+
+function toggleMute() {
+  vozAtiva = !vozAtiva;
+  if (!vozAtiva) window.speechSynthesis.cancel();
+  const btn = document.getElementById('btn-mute');
+  btn.textContent = vozAtiva ? '🔊 Voz' : '🔇 Mudo';
+  btn.style.opacity = vozAtiva ? '1' : '0.5';
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+
+</script>
+</body>
+</html>
