@@ -1,0 +1,8 @@
+.vercel
+history.db
+__pycache__/
+*.pyc
+*.pyo
+*.db-journal
+*.db-wal
+*.db-shm
