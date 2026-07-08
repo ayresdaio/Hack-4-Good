@@ -15,7 +15,16 @@ _memory_history = []
 if os.path.exists('/data'):
     DATABASE = '/data/history.db'
 else:
-    DATABASE = os.path.join(os.path.dirname(__file__), 'history.db')
+    # No Vercel ou plataformas serverless, a raiz é apenas de leitura.
+    # Testamos se conseguimos escrever localmente, senão usamos a pasta /tmp (que é gravável).
+    try:
+        test_file = os.path.join(os.path.dirname(__file__), '.write_test')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        DATABASE = os.path.join(os.path.dirname(__file__), 'history.db')
+    except Exception:
+        DATABASE = '/tmp/history.db'
 
 def init_db():
     """Inicializa a base de dados SQLite e cria a tabela se não existir."""
