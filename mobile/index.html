@@ -835,9 +835,111 @@
       height: 14px;
     }
   }
+
+  /* ── BANNER DE INSTALAÇÃO PWA ── */
+  .install-banner {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    background: rgba(6, 11, 24, 0.95);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-md);
+    padding: 0.8rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 10000;
+    box-shadow: 0 0 20px rgba(0, 229, 160, 0.15), inset 0 0 15px rgba(6, 11, 24, 0.8);
+    backdrop-filter: blur(10px);
+    animation: slideDown 0.4s ease-out;
+  }
+  @keyframes slideDown {
+    from { transform: translateY(-120%); }
+    to { transform: translateY(0); }
+  }
+  .install-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .install-banner-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--accent2);
+    padding: 3px;
+    background: rgba(99, 102, 241, 0.1);
+  }
+  .install-banner-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .install-banner-text h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+  }
+  .install-banner-text p {
+    margin: 2px 0 0;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+  .install-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .btn-banner-install {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    box-shadow: 0 0 10px rgba(0, 229, 160, 0.3);
+    transition: all 0.2s;
+  }
+  .btn-banner-install:active {
+    transform: scale(0.95);
+  }
+  .btn-banner-close {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1rem;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .btn-banner-close:hover {
+    color: #fff;
+  }
 </style>
 </head>
 <body>
+
+<!-- BANNER DE INSTALAÇÃO PWA -->
+<div id="install-banner" class="install-banner" style="display: none;">
+  <div class="install-banner-content">
+    <div class="install-banner-icon">
+      <img src="simbolo_only.png" alt="LGP Logo">
+    </div>
+    <div class="install-banner-text">
+      <h4>Instalar LGP Tradutor</h4>
+      <p>Acede rapidamente a partir do ecrã inicial.</p>
+    </div>
+  </div>
+  <div class="install-banner-actions">
+    <button class="btn-banner-install" onclick="installPWA()">Instalar</button>
+    <button class="btn-banner-close" onclick="closeInstallBanner()">✕</button>
+  </div>
+</div>
 
 <!-- CAPA DE BOAS-VINDAS / INTRODUÇÃO MOBILE HUD -->
 <div id="welcome-screen" class="welcome-screen">
@@ -1684,6 +1786,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+// Lógica para intercetar o prompt de instalação do PWA
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Impede que o prompt padrão apareça imediatamente
+  e.preventDefault();
+  // Guarda o evento para ser acionado mais tarde
+  deferredPrompt = e;
+  // Mostra o banner de instalação personalizado
+  const installBanner = document.getElementById('install-banner');
+  if (installBanner) {
+    installBanner.style.display = 'flex';
+  }
+});
+
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('Utilizador aceitou instalar o PWA');
+      } else {
+        console.log('Utilizador rejeitou instalar o PWA');
+      }
+      deferredPrompt = null;
+    });
+    closeInstallBanner();
+  }
+}
+
+function closeInstallBanner() {
+  const installBanner = document.getElementById('install-banner');
+  if (installBanner) {
+    installBanner.style.display = 'none';
+  }
+}
 </script>
 </body>
 </html>
