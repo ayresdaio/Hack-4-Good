@@ -100,7 +100,7 @@ def clear_history_db():
 @app.route('/')
 def index():
     """Serve a aplicação principal desktop."""
-    return send_file('tradutor-lgp versão dia 2.html')
+    return send_file('index.html')
 
 @app.route('/mobile/')
 @app.route('/mobile/<path:path>')

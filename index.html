@@ -4,350 +4,994 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LGP Tradutor — Língua Gestual Portuguesa</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#00e5a0">
-<link rel="apple-touch-icon" href="icone.png">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="mobile/simbolo_only.png">
+<!-- Fontes premium: Syne para títulos arrojados e contrastantes, Outfit para leitura e DM Mono para dados numéricos -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Importação do TensorFlow.js e da biblioteca do Teachable Machine -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
 <style>
+  /* ── SISTEMA DE DESIGN STITCH: CYBERNETIC HUD (NEON-GLASS BRUTALISM) ── */
   :root {
-    --bg: #0a0a0f;
-    --surface: #13131a;
-    --card: #1a1a24;
-    --border: #2a2a3a;
-    --accent: #00e5a0;
-    --accent2: #7c5cfc;
-    --text: #f0f0f5;
-    --muted: #6b6b80;
-    --danger: #ff4f6a;
-    --warn: #ffb830;
+    --bg: #02050f;          /* Slate HUD ultra escuro */
+    --surface: #060b18;     /* Superfície do painel principal */
+    --card: rgba(8, 14, 30, 0.55); /* Glassmorphism HUD */
+    --border: rgba(99, 102, 241, 0.18); /* Brilho de margem Indigo */
+    --border-hover: rgba(6, 182, 212, 0.35); /* Brilho de margem Cyan */
+    
+    --accent: #06b6d4;      /* Cyan Elétrico */
+    --accent-glow: rgba(6, 182, 212, 0.25);
+    --accent2: #6366f1;     /* Indigo Ultravioleta */
+    --accent2-glow: rgba(99, 102, 241, 0.25);
+    
+    --text: #F3F4F6;
+    --muted: #64748B;       /* Slate cinza médio */
+    --muted-bg: rgba(255, 255, 255, 0.02);
+    
+    --danger: #EF4444;      /* Laser Vermelho */
+    --warn: #F59E0B;
+    
+    --shadow: 0 20px 45px rgba(0, 0, 0, 0.65), 0 0 60px rgba(99, 102, 241, 0.02);
+    
+    --radius-lg: 16px;      /* Brutalism: cantos retos de raio reduzido e limpos */
+    --radius-md: 12px;
+    --radius-sm: 8px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html, body { height: 100%; max-width: 100%; overflow-x: hidden; }
+  code { word-break: break-all; white-space: pre-wrap; }
+
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Syne', sans-serif;
+    font-family: 'Outfit', sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  /* ── BACKGROUND ── */
+  /* ── EFEITO GRADIENT MESH DE FUNDO HUD ── */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     background:
-      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(124,92,252,0.12) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 35% at 10% 90%, rgba(0,229,160,0.08) 0%, transparent 60%);
+      radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.16) 0%, transparent 60%),
+      radial-gradient(circle at 20% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+      repeating-linear-gradient(rgba(255,255,255,0.005) 0px, rgba(255,255,255,0.005) 1px, transparent 1px, transparent 4px);
     pointer-events: none;
     z-index: 0;
   }
 
-  .wrap { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+  /* ── CAPA / WELCOME SCREEN CYBERNETIC ── */
+  .welcome-screen {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, #070c1b 0%, #02050f 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.5s;
+    opacity: 1;
+    visibility: visible;
+    padding: 1.5rem;
+  }
+  
+  .welcome-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  
+  .welcome-card {
+    max-width: 500px;
+    width: 100%;
+    background: rgba(6, 11, 24, 0.85);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 3.5rem 2.5rem;
+    text-align: center;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
 
-  /* ── HEADER ── */
+  /* Molduras de canto HUD */
+  .welcome-card::before, .welcome-card::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--accent);
+    pointer-events: none;
+  }
+  .welcome-card::before { top: 12px; left: 12px; border-right: 0; border-bottom: 0; }
+  .welcome-card::after { bottom: 12px; right: 12px; border-left: 0; border-top: 0; }
+  
+  .welcome-icon {
+    width: 80px;
+    height: 80px;
+    background: transparent;
+    border: 2px solid var(--accent2);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--accent);
+    margin-bottom: 1.75rem;
+    box-shadow: 0 0 25px var(--accent2-glow);
+    animation: hudRingPulse 3s infinite ease-in-out;
+  }
+
+  @keyframes hudRingPulse {
+    0%, 100% { border-color: var(--accent2); box-shadow: 0 0 15px var(--accent2-glow); }
+    50% { border-color: var(--accent); box-shadow: 0 0 25px var(--accent-glow); transform: scale(1.03); }
+  }
+  
+  .welcome-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 7vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.25rem;
+    background: linear-gradient(135deg, var(--text) 40%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .welcome-subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 1.75rem;
+  }
+  
+  .welcome-description {
+    font-size: 0.95rem;
+    color: #94A3B8;
+    line-height: 1.6;
+    margin-bottom: 2.2rem;
+  }
+  
+  .btn-welcome {
+    width: 100%;
+    padding: 1rem 2rem;
+    font-size: 0.95rem;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 0 12px var(--accent-glow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .btn-welcome:hover {
+    background: var(--accent);
+    color: #02050f;
+    box-shadow: 0 0 22px var(--accent);
+  }
+  
+  .welcome-badges {
+    margin-top: 2rem;
+    display: flex;
+    gap: 0.8rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  /* ── LAYOUT PRINCIPAL ── */
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+  }
+
+  /* (Media queries movidas para o fim da folha de estilos para garantir prioridade no CSS Cascade) */
+
+  /* ── CABEÇALHO (HEADER HUD) ── */
   header {
     padding: 2.5rem 0 2rem;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.25rem;
     border-bottom: 1px solid var(--border);
     margin-bottom: 2.5rem;
+    position: relative;
   }
+  
   .logo-mark {
-    width: 48px; height: 48px;
-    background: linear-gradient(135deg, var(--accent2), var(--accent));
-    border-radius: 12px;
+    width: 56px; height: 56px;
+    border: 1px solid var(--accent);
+    background: rgba(6, 182, 212, 0.05);
+    border-radius: var(--radius-sm);
     display: grid; place-items: center;
-    font-size: 1.4rem;
+    color: var(--accent);
     flex-shrink: 0;
+    box-shadow: 0 0 15px var(--accent-glow);
   }
-  header h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
-  header p { font-size: 0.8rem; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  
+  .header-text h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  
+  .header-text p {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
 
-  /* ── TABS ── */
+  /* ── NAVEGAÇÃO POR TABS HUD ── */
   .tabs {
-    display: flex; gap: 0.5rem; margin-bottom: 2rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0;
+    display: inline-flex;
+    background: rgba(6, 11, 24, 0.65);
+    border: 1px solid var(--border);
+    padding: 4px;
+    border-radius: var(--radius-md);
+    gap: 2px;
+    margin-bottom: 2.5rem;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
+  
   .tab {
-    padding: 0.65rem 1.2rem;
-    border: none; background: none;
-    color: var(--muted); font-family: 'Syne', sans-serif;
-    font-size: 0.85rem; font-weight: 700; letter-spacing: 0.04em;
-    cursor: pointer; border-bottom: 2px solid transparent;
-    margin-bottom: -1px; transition: all 0.2s;
+    padding: 0.6rem 1.25rem;
+    border: none; background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
-  .tab:hover { color: var(--text); }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  
+  .tab svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s;
+  }
+  
+  .tab:hover {
+    color: var(--text);
+  }
+  
+  .tab.active {
+    color: #02050f;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    font-weight: 700;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+  }
+  
+  .tab.active svg {
+    transform: scale(1.1);
+  }
 
   .panel { display: none; }
-  .panel.active { display: block; }
+  .panel.active { display: block; animation: panelFade 0.4s ease; }
+  
+  @keyframes panelFade {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
-  /* ── CARDS ── */
+  /* ── CARTÕES HUD (CARDS) ── */
   .card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    position: relative;
   }
-  .card-title {
-    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--muted);
-    margin-bottom: 1rem;
-    display: flex; align-items: center; gap: 0.5rem;
+  
+  .card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px var(--accent-glow);
   }
-  .card-title span { font-size: 1rem; }
 
-  /* ── ROADMAP ── */
+  .card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent);
+    margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  .card-title svg { flex-shrink: 0; color: var(--accent2); }
+
+  /* ── CRONOGRAMA / ROADMAP HUD ── */
   .roadmap { display: flex; flex-direction: column; gap: 0; }
 
   .phase {
-    display: grid; grid-template-columns: 56px 1fr;
-    gap: 0 1.2rem; position: relative;
+    display: grid; grid-template-columns: 46px 1fr;
+    gap: 0 1.5rem; position: relative;
   }
+  
   .phase:not(:last-child) .phase-line::after {
     content: ''; position: absolute;
-    left: 27px; top: 56px; bottom: 0; width: 2px;
-    background: var(--border);
+    left: 21px; top: 46px; bottom: 0; width: 1px;
+    background: linear-gradient(to bottom, var(--border), rgba(99, 102, 241, 0.02));
   }
+  
   .phase-line { position: relative; display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+  
   .phase-dot {
-    width: 40px; height: 40px;
-    border-radius: 50%;
+    width: 38px; height: 38px;
+    border-radius: var(--radius-sm);
     display: grid; place-items: center;
-    font-size: 1rem; font-weight: 800;
+    font-size: 0.8rem; font-weight: 700;
     flex-shrink: 0; z-index: 1;
-    border: 2px solid var(--border);
-    background: var(--surface);
+    border: 1px solid var(--border);
+    background: #060b18;
     font-family: 'DM Mono', monospace;
-    font-size: 0.85rem;
+    transition: all 0.3s ease;
   }
-  .phase-dot.done { background: var(--accent); border-color: var(--accent); color: #000; }
-  .phase-dot.active-phase { background: var(--accent2); border-color: var(--accent2); color: #fff; box-shadow: 0 0 0 4px rgba(124,92,252,0.2); }
-  .phase-dot.pending { color: var(--muted); }
-
-  .phase-content { padding: 0 0 2rem; }
-  .phase-header {
-    display: flex; align-items: baseline; gap: 0.75rem;
-    margin-bottom: 0.4rem; flex-wrap: wrap;
+  
+  .phase-dot.done {
+    border-color: #10B981;
+    color: #10B981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
   }
-  .phase-name { font-size: 1rem; font-weight: 700; }
-  .phase-time {
-    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+  
+  .phase-dot.active-phase {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 15px var(--accent-glow);
+  }
+  
+  .phase-dot.pending {
     color: var(--muted);
-    background: var(--surface); border: 1px solid var(--border);
-    padding: 2px 8px; border-radius: 20px;
+    border-color: var(--border);
   }
-  .phase-desc { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.8rem; line-height: 1.6; }
 
-  .steps { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+  .phase-content { padding: 0 0 2.5rem; }
+  
+  .phase-header {
+    display: flex; align-items: center; gap: 0.75rem;
+    margin-bottom: 0.5rem; flex-wrap: wrap;
+  }
+  
+  .phase-name { font-size: 1.05rem; font-weight: 700; font-family: 'Syne', sans-serif; }
+  
+  .phase-time {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    color: var(--accent2);
+    background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.2);
+    padding: 1px 8px; border-radius: 4px;
+  }
+  
+  .phase-desc { font-size: 0.88rem; color: #94A3B8; margin-bottom: 1rem; line-height: 1.6; }
+
+  .steps { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
   .steps li {
-    display: flex; align-items: flex-start; gap: 0.6rem;
-    font-size: 0.82rem; color: #c0c0d0; line-height: 1.5;
+    position: relative;
+    padding-left: 1.25rem;
+    font-size: 0.84rem;
+    color: #c8d2e6;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
   }
   .steps li::before {
-    content: '→'; color: var(--accent2); flex-shrink: 0;
+    content: '//';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
     font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: bold;
   }
 
   .tip {
-    margin-top: 0.8rem;
-    background: rgba(0,229,160,0.06);
-    border: 1px solid rgba(0,229,160,0.2);
-    border-radius: 10px;
-    padding: 0.65rem 0.9rem;
-    font-size: 0.78rem; color: #a0e8cc; line-height: 1.5;
+    margin-top: 1rem;
+    background: rgba(6, 182, 212, 0.03);
+    border-left: 2px solid var(--accent);
+    border-radius: 4px;
+    padding: 0.8rem 1.1rem;
+    font-size: 0.82rem; color: #a4edd9; line-height: 1.6;
   }
-  .tip strong { color: var(--accent); }
+  .tip strong { color: var(--accent); font-family: 'DM Mono', monospace; }
 
   .warn-box {
-    margin-top: 0.8rem;
-    background: rgba(255,184,48,0.06);
-    border: 1px solid rgba(255,184,48,0.25);
-    border-radius: 10px;
-    padding: 0.65rem 0.9rem;
-    font-size: 0.78rem; color: #ffe0a0; line-height: 1.5;
+    margin-top: 1rem;
+    background: rgba(245, 158, 11, 0.03);
+    border-left: 2px solid var(--warn);
+    border-radius: 4px;
+    padding: 0.8rem 1.1rem;
+    font-size: 0.82rem; color: #fde4b8; line-height: 1.6;
   }
-  .warn-box strong { color: var(--warn); }
+  .warn-box strong { color: var(--warn); font-family: 'DM Mono', monospace; }
 
-  /* ── PHASE 2 BADGE ── */
   .phase2-badge {
-    display: inline-block; margin-top: 0.6rem;
-    background: rgba(124,92,252,0.12); border: 1px solid rgba(124,92,252,0.3);
-    color: #b8a0ff; font-size: 0.72rem; font-family: 'DM Mono', monospace;
-    padding: 3px 10px; border-radius: 20px;
-    letter-spacing: 0.06em;
+    display: inline-block; margin-top: 0.8rem;
+    background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.2);
+    color: #c4b0ff; font-size: 0.68rem; font-family: 'DM Mono', monospace;
+    padding: 2px 10px; border-radius: 4px;
+    letter-spacing: 0.04em;
   }
 
-  /* ── APP PANEL ── */
+  /* ── LAYOUT DO TRADUTOR ── */
   .app-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 2rem;
+    align-items: start;
   }
-  @media (max-width: 620px) { .app-layout { grid-template-columns: 1fr; } }
 
+
+  /* ── MOLDURA DA CÂMARA (HUD CAM) ── */
   .cam-wrap {
-    background: #000;
-    border-radius: 14px; overflow: hidden;
+    background: #02040a;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
     aspect-ratio: 4/3;
     position: relative;
-    border: 2px solid var(--border);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    transition: border-color 0.3s;
+  }
+  .cam-wrap:hover {
+    border-color: var(--accent);
   }
   .cam-wrap video, .cam-wrap canvas {
     width: 100%; height: 100%; object-fit: cover; display: block;
   }
+
+  /* Efeito de varrimento de laser HUD */
+  .laser-scanner {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    box-shadow: 0 0 15px var(--accent), 0 0 25px var(--accent);
+    z-index: 5;
+    pointer-events: none;
+    animation: laserScan 4s linear infinite;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .cam-wrap.active-cam .laser-scanner {
+    opacity: 0.8;
+  }
+  
+  @keyframes laserScan {
+    0% { top: 0%; }
+    50% { top: 100%; }
+    100% { top: 0%; }
+  }
+
   .cam-overlay {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 0.5rem;
-    background: rgba(10,10,15,0.85);
+    flex-direction: column; gap: 0.75rem;
+    background: rgba(6, 11, 24, 0.92);
     font-size: 0.85rem; color: var(--muted); text-align: center;
-    padding: 1rem;
+    padding: 1.5rem;
+    font-family: 'DM Mono', monospace;
   }
-  .cam-overlay .big-icon { font-size: 2.5rem; }
-  .cam-overlay p { line-height: 1.5; font-size: 0.8rem; }
+  .cam-overlay svg { color: var(--accent); margin-bottom: 0.5rem; animation: hudPulse 2.5s infinite; }
+  
+  @keyframes hudPulse {
+    0%, 100% { transform: scale(1); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 1; }
+  }
+  
+  .cam-overlay p { line-height: 1.6; font-size: 0.8rem; color: var(--muted); }
 
-  .result-panel { display: flex; flex-direction: column; gap: 1rem; }
+  /* ── PAINEL DE RESULTADOS ── */
+  .result-panel { display: flex; flex-direction: column; gap: 1.5rem; }
 
   .result-box {
-    background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: 14px;
-    padding: 1.5rem;
+    background: rgba(6, 11, 24, 0.5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
     text-align: center;
-    flex: 1;
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 0.5rem;
+    align-items: center; justify-content: center;
+    min-height: 200px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(8px);
+    transition: border-color 0.3s;
   }
+  
+  .result-box:hover {
+    border-color: var(--border-hover);
+  }
+  
   .result-label {
-    font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase;
     color: var(--muted); font-weight: 700;
   }
+  
   .result-word {
-    font-size: 2.8rem; font-weight: 800; letter-spacing: -0.03em;
-    color: var(--text); min-height: 3.5rem;
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800; letter-spacing: -0.04em;
+    color: var(--text); min-height: 4.5rem;
     display: flex; align-items: center;
     transition: all 0.3s;
+    word-break: break-all;
+    overflow-wrap: anywhere;
   }
-  .result-word.detected { color: var(--accent); }
+  .result-word.detected {
+    color: var(--accent);
+    text-shadow: 0 0 25px var(--accent-glow);
+  }
+  
   .result-conf {
-    font-family: 'DM Mono', monospace; font-size: 0.75rem;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    color: var(--accent2);
+    background: rgba(99, 102, 241, 0.05);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  /* ── BARRAS DE PROBABILIDADE HUD ── */
+  .bar-list { width: 100%; display: flex; flex-direction: column; gap: 0.6rem; }
+  .bar-row { display: flex; align-items: center; gap: 0.75rem; }
+  
+  .bar-row-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    width: 40px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  
+  .bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  
+  .bar-fill {
+    height: 100%;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg, var(--accent2), rgba(99, 102, 241, 0.4));
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0%;
+  }
+  .bar-fill.top {
+    background: linear-gradient(90deg, var(--accent), #15e3be);
+    box-shadow: 0 0 8px var(--accent-glow);
+  }
+  
+  .bar-pct { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); width: 34px; text-align: right; }
+
+  /* ── BOTÕES HUD (BUTTONS) ── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: var(--radius-sm); border: 1px solid transparent;
+    font-family: 'DM Mono', monospace; font-weight: 700; font-size: 0.78rem;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .btn-primary {
+    background: transparent;
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent);
+    color: #02050f;
+    box-shadow: 0 0 18px var(--accent);
+  }
+  
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--accent2);
+    color: #fff;
+    box-shadow: 0 0 12px var(--accent2-glow);
+  }
+  
+  .btn-danger {
+    background: transparent;
+    color: #FCA5A5;
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #fff;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+  }
+  
+  .btn:disabled { opacity: 0.25; cursor: not-allowed; box-shadow: none !important; }
+  .btn-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+  /* ── ENTRADAS DE URL / CAMPOS HUD ── */
+  .input-group { display: flex; gap: 0.5rem; }
+  .input-group input {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 0.7rem 1rem;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.8rem;
+    outline: none; transition: border-color 0.25s, box-shadow 0.25s;
+  }
+  .input-group input:focus { border-color: var(--accent2); box-shadow: 0 0 10px rgba(99, 102, 241, 0.15); }
+  .input-group input::placeholder { color: rgba(100, 116, 139, 0.5); }
+
+  /* ── ESTADOS / STATUS RING HUD ── */
+  #model-status {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(6, 11, 24, 0.5);
+    padding: 0.65rem 1.1rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+  .status-ring {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+  }
+  .status-ring::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    animation: statusPulse 2s infinite ease-out;
+    opacity: 0;
+  }
+  @keyframes statusPulse {
+    0% { transform: scale(0.8); opacity: 0.6; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  .status-ring.err { background-color: var(--danger); color: var(--danger); }
+  .status-ring.loading { background-color: var(--warn); color: var(--warn); }
+  .status-ring.ok { background-color: #10B981; color: #10B981; }
+  
+  .status-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  /* ── SLIDER DE SENSIBILIDADE HUD ── */
+  .slider-group {
+    margin-top: 1.25rem;
+    background: rgba(255, 255, 255, 0.01);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1.1rem;
+    border: 1px solid var(--border);
+  }
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  #threshold-val {
+    color: var(--accent);
+    font-weight: bold;
+    font-size: 0.8rem;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 1px solid #02050f;
+    cursor: pointer;
+    box-shadow: 0 0 8px var(--accent-glow);
+    transition: transform 0.1s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  /* ── CONSTRUTOR DE FRASES INTERATIVO HUD ── */
+  .section-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+  .sentence-display {
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1.25rem;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.7);
+  }
+  .sentence-text {
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .sentence-text.empty {
+    color: var(--muted);
+    font-style: italic;
+    font-size: 0.95rem;
+  }
+  .history-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: 3rem;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    background: rgba(255, 255, 255, 0.01);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border);
+    margin-bottom: 1.25rem;
+  }
+  .history-tag {
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    color: #EAF0FF;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    user-select: none;
+  }
+  .history-tag:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #FCA5A5;
+    transform: scale(0.96);
+  }
+  .history-tag::after {
+    content: '×';
+    font-size: 0.9rem;
+    font-weight: bold;
+    opacity: 0.6;
+    margin-left: 2px;
+  }
+  .history-tag:hover::after {
+    opacity: 1;
+  }
+  .history-empty {
+    font-size: 0.85rem;
     color: var(--muted);
   }
 
-  .bar-list { width: 100%; display: flex; flex-direction: column; gap: 0.4rem; }
-  .bar-row { display: flex; align-items: center; gap: 0.6rem; }
-  .bar-row-label { font-family: 'DM Mono', monospace; font-size: 0.72rem; width: 28px; color: var(--muted); }
-  .bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 99px; background: var(--accent2); transition: width 0.25s ease; width: 0%; }
-  .bar-fill.top { background: var(--accent); }
-  .bar-pct { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); width: 36px; text-align: right; }
-
-  /* ── BUTTONS ── */
-  .btn {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.7rem 1.4rem;
-    border-radius: 10px; border: none;
-    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem;
-    cursor: pointer; transition: all 0.2s; letter-spacing: 0.02em;
-  }
-  .btn-primary { background: var(--accent); color: #000; }
-  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
-  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
-  .btn-danger { background: rgba(255,79,106,0.1); color: var(--danger); border: 1px solid rgba(255,79,106,0.3); }
-  .btn-danger:hover { background: rgba(255,79,106,0.2); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
-
-  .btn-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-
-  /* ── URL INPUT ── */
-  .input-group { display: flex; gap: 0.5rem; }
-  .input-group input {
-    flex: 1; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 0.65rem 1rem;
-    color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.8rem;
-    outline: none; transition: border-color 0.2s;
-  }
-  .input-group input:focus { border-color: var(--accent2); }
-  .input-group input::placeholder { color: var(--muted); }
-
-  /* ── STATUS ── */
-  .status {
-    font-family: 'DM Mono', monospace; font-size: 0.75rem;
-    padding: 0.5rem 0.9rem; border-radius: 8px;
-    display: inline-flex; align-items: center; gap: 0.5rem;
-  }
-  .status.ok { background: rgba(0,229,160,0.1); color: var(--accent); border: 1px solid rgba(0,229,160,0.25); }
-  .status.loading { background: rgba(124,92,252,0.1); color: #b8a0ff; border: 1px solid rgba(124,92,252,0.25); }
-  .status.err { background: rgba(255,79,106,0.1); color: var(--danger); border: 1px solid rgba(255,79,106,0.3); }
-  .pulse { animation: pulse 1.2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-  /* ── GUIDE PANEL ── */
-  .guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+  /* ── GUIA / RECURSOS ── */
+  .guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1.25rem; }
   .guide-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.6rem;
+    transition: border-color 0.25s;
   }
-  .guide-card h3 { font-size: 0.85rem; font-weight: 700; }
-  .guide-card p { font-size: 0.77rem; color: var(--muted); line-height: 1.5; }
-  .guide-card a { color: var(--accent2); font-size: 0.75rem; font-family: 'DM Mono', monospace; word-break: break-all; }
+  .guide-card:hover {
+    border-color: var(--accent);
+  }
+  .guide-card h3 { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; color: #fff; }
+  .guide-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+  .guide-card a { color: var(--accent); font-size: 0.75rem; font-family: 'DM Mono', monospace; word-break: break-all; text-decoration: none; display: flex; align-items: center; gap: 4px; }
+  .guide-card a:hover { text-decoration: underline; }
 
+  /* ── GRELHA DE ALFABETO HUD ── */
   .alphabet-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
-    gap: 0.5rem; margin-top: 0.75rem;
+    gap: 0.5rem; margin-top: 1rem;
   }
   .letter-chip {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 8px; padding: 0.5rem;
-    text-align: center; font-weight: 800; font-size: 1.1rem;
-    color: var(--muted); cursor: default;
-    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 0.5rem;
+    text-align: center; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem;
+    color: var(--text); cursor: default;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .letter-chip:hover { border-color: var(--accent2); color: var(--accent2); }
+  .letter-chip:hover {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: var(--accent2);
+    color: var(--accent);
+    transform: scale(1.06);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  }
 
-  /* ── FOOTER ── */
+  /* ── RODAPÉ (FOOTER) ── */
   footer {
-    margin-top: 3rem; padding-top: 1.5rem;
+    margin-top: 4rem; padding-top: 2rem;
     border-top: 1px solid var(--border);
     display: flex; justify-content: space-between; align-items: center;
-    flex-wrap: wrap; gap: 0.5rem;
+    flex-wrap: wrap; gap: 1rem;
     font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace;
   }
-  .badge-stack { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .badge-stack { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .badge {
-    padding: 2px 8px; border-radius: 20px; font-size: 0.68rem;
-    background: var(--surface); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 4px; font-size: 0.68rem;
+    background: rgba(255,255,255,0.01); border: 1px solid var(--border);
+  }
+
+  /* ── RESPONSIVIDADE HUD FLUIDA ── */
+  @media (max-width: 1024px) {
+    .app-layout {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .wrap {
+      padding: 0 1rem 3rem;
+    }
+    header {
+      padding: 1.5rem 0 1rem;
+      margin-bottom: 1.5rem;
+      gap: 0.75rem;
+    }
+    .logo-mark {
+      width: 44px; height: 44px;
+    }
+    .header-text h1 {
+      font-size: clamp(1.2rem, 5vw, 1.5rem);
+    }
+    .tabs {
+      margin-bottom: 1.5rem;
+      width: 100%;
+      display: flex;
+    }
+    .tab {
+      flex: 1;
+      justify-content: center;
+      padding: 0.55rem 0.35rem;
+      font-size: 0.7rem;
+      gap: 0.25rem;
+    }
+    .card {
+      padding: 1.1rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1.1rem;
+    }
+    .guide-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    .alphabet-grid {
+      grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+    }
+    .welcome-card {
+      padding: 2.25rem 1.25rem;
+    }
+    .welcome-title {
+      font-size: clamp(1.6rem, 7vw, 2.2rem);
+    }
+  }
+
+  @media (max-width: 400px) {
+    .tab svg {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .laser-scanner, .welcome-icon { animation: none !important; }
+    .tab, .btn, .result-word, .bar-fill, .letter-chip, .welcome-screen { transition: none !important; }
   }
 </style>
 </head>
 <body>
+
+<!-- CAPA DE BOAS-VINDAS / INTRODUÇÃO HUD -->
+<div id="welcome-screen" class="welcome-screen">
+  <div class="welcome-card">
+    <div class="welcome-icon" style="padding: 10px;">
+      <img src="mobile/simbolo_only.png" alt="LGP Tradutor Logo" style="width: 100%; height: 100%; object-fit: contain;">
+    </div>
+    <h1 class="welcome-title">LGP Tradutor</h1>
+    <p class="welcome-subtitle">Língua Gestual Portuguesa // Sistema HUD</p>
+    <p class="welcome-description">
+      Plataforma interactiva baseada em inteligência artificial para tradução de dactilologia e gestos da Língua Gestual Portuguesa em tempo real. Processamento inteiramente local no browser.
+    </p>
+    <button class="btn-welcome" onclick="closeWelcomeScreen()">Inicializar Interface</button>
+    <div class="welcome-badges">
+      <span>TENSORFLOWJS_CORE</span>
+      <span>//</span>
+      <span>HUD_LOCAL_MODE</span>
+    </div>
+  </div>
+</div>
+
 <div class="wrap">
 
-  <!-- HEADER -->
+  <!-- CABEÇALHO -->
   <header>
-    <div class="logo-mark">🤟</div>
-    <div>
+    <div class="logo-mark" style="padding: 6px;">
+      <img src="mobile/simbolo_only.png" alt="LGP Tradutor Logo" style="width: 100%; height: 100%; object-fit: contain;">
+    </div>
+    <div class="header-text">
       <h1>LGP Tradutor</h1>
-      <p>Língua Gestual Portuguesa → Texto · Alt July 2026</p>
+      <p>Língua Gestual Portuguesa → Texto · Coimbra 2026</p>
     </div>
   </header>
 
-  <!-- TABS -->
+  <!-- SELEÇÃO DE TABS -->
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('roadmap')">📋 Roadmap</button>
-    <button class="tab" onclick="switchTab('app')">📷 Tradutor</button>
-    <button class="tab" onclick="switchTab('guide')">📚 Guia Teachable Machine</button>
+    <button class="tab active" onclick="switchTab('roadmap')">
+      <!-- Icon de Lista/Roadmap -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+      Roadmap
+    </button>
+    <button class="tab" onclick="switchTab('app')">
+      <!-- Icon de Camera/Scan -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      Tradutor
+    </button>
+    <button class="tab" onclick="switchTab('guide')">
+      <!-- Icon de Livro/Guia -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"></path></svg>
+      Guia
+    </button>
   </div>
 
   <!-- ════════════════════════════════════════
@@ -356,17 +1000,24 @@
   <div id="panel-roadmap" class="panel active">
 
     <div class="card">
-      <div class="card-title"><span>🎯</span> Objetivo do Projeto</div>
-      <p style="font-size:0.9rem; line-height:1.7; color:#c0c0d0;">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+        Objetivo do Projeto
+      </div>
+      <p style="font-size:0.95rem; line-height:1.7; color:#c8d2e6;">
         Criar uma aplicação web que usa a câmara do dispositivo para reconhecer gestos da
         <strong>Língua Gestual Portuguesa (LGP)</strong> e os traduz para texto em tempo real.
-        O modelo de reconhecimento é treinado pelos próprios alunos no browser, sem instalar nada.
-        Fase 1 foca texto. Fase 2 (futura) adiciona voz.
+        O modelo de reconhecimento é treinado pelos próprios alunos no browser.
+        A aplicação inclui <strong>síntese de voz</strong> integrada, <strong>construtor de frases interativo</strong>
+        e um <strong>servidor Python (Flask)</strong> para guardar e gerir de forma permanente o histórico de tradução.
       </p>
     </div>
 
     <div class="card">
-      <div class="card-title"><span>⏱</span> Distribuição de 15 horas</div>
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        Distribuição de 15 horas
+      </div>
       <div class="roadmap">
 
         <!-- FASE 1 -->
@@ -380,18 +1031,18 @@
               <span class="phase-time">2h</span>
             </div>
             <p class="phase-desc">
-              Antes de programar, perceber <em>o quê</em> e <em>o porquê</em>.
-              A LGP é uma língua completa com gramática própria — não é só traduzir letras.
+              Antes de programar, perceber o propósito.
+              A LGP é uma língua completa com gramática própria — não se baseia apenas em soletrar letras.
             </p>
             <ul class="steps">
-              <li>Ver um vídeo curto sobre LGP e comunidade surda em Portugal</li>
-              <li>Conhecer o alfabeto manual português (dactilologia) — 26 letras + dígitos</li>
-              <li>Decidir em grupo o subconjunto a traduzir: <strong>letras A–Z</strong> (mais fácil) ou <strong>10 palavras simples</strong> (mais impacto)</li>
-              <li>Criar conta Google (necessária para o Teachable Machine)</li>
+              <li>Ver um vídeo curto explicativo sobre a LGP e a comunidade surda em Portugal</li>
+              <li>Conhecer o alfabeto manual português (dactilologia) — as 26 letras e os dígitos</li>
+              <li>Decidir em grupo o subconjunto a traduzir: as <strong>letras A–Z</strong> (dactilologia) ou <strong>10 palavras simples</strong></li>
+              <li>Criar uma conta Google (necessária para utilizar a Teachable Machine)</li>
               <li>Abrir o Teachable Machine pela primeira vez e explorar a interface</li>
             </ul>
             <div class="tip">
-              <strong>💡 Recomendação:</strong> Começar só com <strong>5 letras</strong> (A, B, C, D, E) nas primeiras sessões. Um modelo com 5 classes bem treinadas é melhor que 26 classes mal treinadas.
+              <strong>💡 Recomendação:</strong> Começar com apenas <strong>5 letras</strong> (A, B, C, D, E) nas primeiras sessões. Um modelo com poucas classes bem treinadas é melhor e mais preciso do que com 26 mal treinadas.
             </div>
           </div>
         </div>
@@ -407,23 +1058,23 @@
               <span class="phase-time">3h</span>
             </div>
             <p class="phase-desc">
-              Esta é a fase mais importante. Um modelo de ML só é bom se tiver dados variados.
-              Cada aluno contribui com fotos dos seus próprios gestos.
+              Esta é a fase crítica. Um modelo de Machine Learning só é eficaz com dados diversificados.
+              Cada participante contribui com capturas dos seus próprios gestos.
             </p>
             <ul class="steps">
-              <li>Ir a <strong>teachablemachine.withgoogle.com</strong> → New Project → Image Project → Standard</li>
-              <li>Criar uma classe por letra/palavra (ex: "A", "B", "C", "Olá", "Obrigado")</li>
-              <li>Para cada classe: tirar <strong>mínimo 50 fotos</strong> com a câmara do browser</li>
-              <li>Variar: fundo diferente, luz diferente, ângulo ligeiramente diferente, mão esquerda e direita</li>
-              <li>Adicionar uma classe "Nenhum" com fotos sem gesto (reduz falsos positivos)</li>
-              <li>Clicar <strong>Train Model</strong> e aguardar (pode demorar 2–5 minutos)</li>
-              <li>Testar no preview do Teachable Machine antes de exportar</li>
+              <li>Aceder a <strong>teachablemachine.withgoogle.com</strong> → New Project → Image Project → Standard</li>
+              <li>Criar uma classe específica por letra/palavra (ex: "A", "B", "C", "Olá", "Obrigado")</li>
+              <li>Para cada classe: recolher **no mínimo 50 fotografias** com a câmara do browser</li>
+              <li>Variar fatores: focar em fundos diferentes, iluminação diferente, ângulos de mão e com as duas mãos</li>
+              <li>Adicionar uma classe "Nenhum" com imagens neutras sem gestos (essencial para reduzir falsos positivos)</li>
+              <li>Clicar em <strong>Train Model</strong> e aguardar (geralmente demora entre 2 a 5 minutos)</li>
+              <li>Testar exaustivamente no preview da plataforma antes de avançar para a exportação</li>
             </ul>
             <div class="warn-box">
-              <strong>⚠️ Erro comum:</strong> Tirar poucas fotos ou sempre no mesmo fundo. O modelo vai funcionar só nesse fundo. Variedade é fundamental.
+              <strong>⚠️ Erro comum:</strong> Capturar fotografias sempre no mesmo plano de fundo ou na mesma posição. O modelo ficará dependente desse ambiente. Diversifique!
             </div>
             <div class="tip">
-              <strong>💡 Dataset extra:</strong> Podes adicionar imagens do alfabeto LGP já existentes para reforçar o treino. Ver separador "Guia" para recursos.
+              <strong>💡 Dataset extra:</strong> Podem ser recolhidas e adicionadas imagens de alfabetos manuais já existentes para reforçar o modelo. Consulte a Tab "Guia" para recursos adicionais.
             </div>
           </div>
         </div>
@@ -439,18 +1090,17 @@
               <span class="phase-time">2h</span>
             </div>
             <p class="phase-desc">
-              O Teachable Machine gera um link com o modelo. A nossa app carrega esse link e começa a reconhecer gestos.
+              A Teachable Machine gera uma hiperligação para o modelo alojado. A aplicação carrega esse link e inicia a deteção em tempo real.
             </p>
             <ul class="steps">
-              <li>No Teachable Machine: <strong>Export Model → Tensorflow.js → Upload (shareable link)</strong></li>
-              <li>Copiar o URL gerado (parece-se com <code style="font-family:monospace;font-size:0.75rem;">https://teachablemachine.withgoogle.com/models/yRu8axD3u/</code>)</li>
-              <li>Ir ao separador <strong>"Tradutor"</strong> desta app</li>
-              <li>Colar o URL no campo e clicar <strong>"Carregar Modelo"</strong></li>
-              <li>Quando aparecer "Modelo carregado ✓", clicar <strong>"Iniciar Câmara"</strong></li>
-              <li>Fazer o gesto em frente à câmara e ver o resultado aparecer</li>
+              <li>Na plataforma: <strong>Export Model → Tensorflow.js → Upload (shareable link)</strong></li>
+              <li>Copiar o URL gerado (exemplo: <code style="font-family:monospace;font-size:0.75rem;">https://teachablemachine.withgoogle.com/models/yRu8axD3u/</code>)</li>
+              <li>Ir ao painel do <strong>"Tradutor"</strong> nesta app</li>
+              <li>Colar o endereço copiado no formulário e premir <strong>"Carregar Modelo"</strong></li>
+              <li>Após a validação e confirmação, premir <strong>"Iniciar Câmara"</strong> para testar as predições</li>
             </ul>
             <div class="tip">
-              <strong>💡 O URL é o modelo.</strong> Podes partilhar o link do modelo com toda a turma — cada um cola na sua cópia da app e fica a funcionar.
+              <strong>💡 O link é o seu modelo:</strong> Pode partilhar o link gerado com colegas. Qualquer pessoa com a app pode utilizá-lo sem ter de repetir o processo de treino.
             </div>
           </div>
         </div>
@@ -458,7 +1108,7 @@
         <!-- FASE 4 -->
         <div class="phase">
           <div class="phase-line">
-            <div class="phase-dot pending">F4</div>
+            <div class="phase-dot active-phase">F4</div>
           </div>
           <div class="phase-content">
             <div class="phase-header">
@@ -466,14 +1116,14 @@
               <span class="phase-time">5h</span>
             </div>
             <p class="phase-desc">
-              Com o básico a funcionar, melhorar a app: mais gestos, melhor interface, mais dados no modelo.
+              Com as deteções básicas a funcionar, aprofunde as potencialidades da aplicação.
             </p>
             <ul class="steps">
-              <li>Adicionar mais letras ou palavras ao modelo (re-treinar e re-exportar)</li>
-              <li>Personalizar cores, título, e aspeto da app</li>
-              <li>Adicionar histórico de gestos detetados (lista de palavras)</li>
-              <li>Testar com utilizadores que não participaram no treino — ver o que falha</li>
-              <li>Ajustar o limiar de confiança (threshold) para reduzir erros</li>
+              <li>Adicionar novas palavras ou expressões ao modelo, procedendo a um novo treino e exportação</li>
+              <li>Personalizar o estilo visual, cores do tema e títulos na interface</li>
+              <li>Construir um histórico de deteções interativo para recolher e formar frases completas</li>
+              <li>Testar com novos utilizadores que não integraram a base de recolha inicial para detetar falhas</li>
+              <li>Ajustar o limiar de sensibilidade (Threshold) de modo a mitigar ruídos ou falsas deteções</li>
             </ul>
           </div>
         </div>
@@ -481,7 +1131,7 @@
         <!-- FASE 5 -->
         <div class="phase">
           <div class="phase-line">
-            <div class="phase-dot pending">F5</div>
+            <div class="phase-dot active-phase">F5</div>
           </div>
           <div class="phase-content">
             <div class="phase-header">
@@ -489,18 +1139,15 @@
               <span class="phase-time">3h</span>
             </div>
             <p class="phase-desc">
-              Publicar a app online para que qualquer pessoa possa usar, e apresentar ao grupo.
+              Partilhar o seu tradutor publicamente online e apresentá-lo.
             </p>
             <ul class="steps">
-              <li>Colocar o ficheiro HTML no GitHub Pages (arrasta e larga)</li>
-              <li>Testar no telemóvel — abrir o link, câmara funciona? Instalar como PWA</li>
-              <li>Preparar uma demo de 3 minutos: problema → solução → demo ao vivo → o que aprendemos</li>
-              <li>Reflexão: o que correu bem? O que mudarias? Que impacto pode ter na vida real?</li>
+              <li>Publicar os ficheiros estáticos gratuitamente via GitHub Pages (arrastando os ficheiros para o repositório)</li>
+              <li>Testar no telemóvel: guardar o link no ecrã principal como PWA (Progressive Web App)</li>
+              <li>Preparar uma breve apresentação de 3 minutos cobrindo: Problema → Solução → Demonstração ao vivo</li>
+              <li>Fazer uma reflexão em grupo sobre melhorias futuras e o potencial impacto na inclusão social</li>
             </ul>
-            <div class="tip">
-              <strong>💡 Ideia bónus:</strong> Convidar alguém da comunidade surda para testar a app e dar feedback real.
-            </div>
-            <div class="phase2-badge">🔊 FASE 2 FUTURA — Síntese de voz (Web Speech API)</div>
+            <div class="phase2-badge">🔊 FASE 2 FUTURA — Integração de áudio com síntese vocal</div>
           </div>
         </div>
 
@@ -509,24 +1156,30 @@
 
     <!-- RESUMO TÉCNICO -->
     <div class="card">
-      <div class="card-title"><span>🛠</span> Stack Técnica — Tudo no Browser, Zero Instalações</div>
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect></svg>
+        Stack Técnica — Sem Instalações
+      </div>
       <div class="guide-grid">
         <div class="guide-card">
-          <h3>🧠 Teachable Machine</h3>
-          <p>Treina o modelo de visão no browser. Sem código. Exporta para a web.</p>
-          <a href="https://teachablemachine.withgoogle.com" target="_blank">teachablemachine.withgoogle.com</a>
+          <h3>Teachable Machine</h3>
+          <p>Treino visual simplificado. Processado inteiramente no browser sem necessidade de codificação de IA complexa.</p>
+          <a href="https://teachablemachine.withgoogle.com" target="_blank">
+            Aceder à Plataforma
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+          </a>
         </div>
         <div class="guide-card">
-          <h3>⚡ TensorFlow.js</h3>
-          <p>Corre o modelo dentro do browser. Não precisa de servidor. Carregado automaticamente.</p>
+          <h3>TensorFlow.js</h3>
+          <p>Motor de execução de modelos de IA no browser que garante total privacidade e alto desempenho.</p>
         </div>
         <div class="guide-card">
-          <h3>📷 WebRTC / getUserMedia</h3>
-          <p>API nativa do browser para aceder à câmara. Funciona em Chrome, Safari, Firefox.</p>
+          <h3>WebRTC</h3>
+          <p>API nativa para captura de câmara com baixa latência em computadores e smartphones.</p>
         </div>
         <div class="guide-card">
-          <h3>🌐 GitHub Pages</h3>
-          <p>Publicação gratuita. Arrasta o ficheiro HTML, fica online em segundos.</p>
+          <h3>GitHub Pages</h3>
+          <p>Hospedagem estática e gratuita imediata com suporte HTTPS seguro.</p>
         </div>
       </div>
     </div>
@@ -534,161 +1187,240 @@
   </div>
 
   <!-- ════════════════════════════════════════
-       PAINEL 2 — APP / TRADUTOR
+       PAINEL 2 — TRADUTOR / APLICAÇÃO
   ════════════════════════════════════════ -->
   <div id="panel-app" class="panel">
 
     <div class="card">
-      <div class="card-title"><span>🔗</span> Passo 1 — Carregar o teu Modelo</div>
-      <p style="font-size:0.82rem; color:var(--muted); margin-bottom:1rem; line-height:1.6;">
-        Cola aqui o URL do modelo que exportaste do Teachable Machine.<br>
-        Formato: <code style="font-family:monospace; color:#b8a0ff;">https://teachablemachine.withgoogle.com/models/XXXXXXX/</code>
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+        Passo 1 — Configurar o Modelo de Deteção
+      </div>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1.25rem; line-height:1.6;">
+        Introduza o endereço URL do modelo gerado no seu projeto Teachable Machine.<br>
+        Formato esperado: <code style="font-family:monospace; color:#a78bfa;">https://teachablemachine.withgoogle.com/models/[código]/</code>
       </p>
       <div class="input-group">
         <input type="text" id="model-url" placeholder="https://teachablemachine.withgoogle.com/models/..." />
         <button class="btn btn-primary" onclick="loadModel()">Carregar</button>
       </div>
-      <div style="margin-top:0.75rem;" id="model-status">
-        <span class="status loading pulse">⏳ À espera do URL do modelo</span>
+      
+      <!-- Estado de conexão HUD -->
+      <div id="model-status" style="margin-top:1.25rem;">
+        <span class="status-ring err"></span>
+        <span class="status-text">À espera da ligação do modelo</span>
       </div>
-      <div style="margin-top:0.75rem;">
-        <p style="font-size:0.75rem; color:var(--muted);">Para testar sem modelo próprio, podes usar este modelo de demonstração (ASL — inglês):</p>
-        <button class="btn btn-secondary" style="margin-top:0.4rem; font-size:0.75rem; padding:0.4rem 0.8rem;"
+      
+      <!-- Slider de sensibilidade dinâmica -->
+      <div class="slider-group">
+        <div class="slider-header">
+          <span>Limiar de Sensibilidade (Threshold)</span>
+          <span id="threshold-val">75%</span>
+        </div>
+        <input type="range" id="threshold-slider" min="50" max="98" value="75" oninput="updateThreshold(this.value)">
+      </div>
+      
+      <div style="margin-top:1.25rem; border-top:1px dashed var(--border); padding-top:1rem;">
+        <p style="font-size:0.78rem; color:var(--muted); margin-bottom: 0.5rem;">Pretende realizar um teste rápido? Utilize o modelo de demonstração (ASL - Inglês):</p>
+        <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.5rem 1rem;"
           onclick="document.getElementById('model-url').value='https://teachablemachine.withgoogle.com/models/XXXXXXXXX/'">
-          Usar modelo de demonstração
+          Carregar Demonstração
         </button>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title"><span>📷</span> Passo 2 — Câmara e Tradução</div>
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+        Passo 2 — Tradução em Tempo Real
+      </div>
 
       <div class="app-layout">
         <!-- CÂMARA -->
         <div>
           <div class="cam-wrap" id="cam-wrap">
+            <!-- Laser de varrimento ativado pelo script -->
+            <div class="laser-scanner"></div>
             <div class="cam-overlay" id="cam-overlay">
-              <div class="big-icon">📷</div>
-              <p>Câmara inativa.<br>Carrega um modelo primeiro,<br>depois clica <strong>"Iniciar Câmara"</strong>.</p>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              <p>Câmara inativa.<br>Conecte o seu modelo de treino primeiro e clique em <strong>"Iniciar Câmara"</strong>.</p>
             </div>
           </div>
-          <div class="btn-row" style="margin-top:0.75rem;">
+          <div class="btn-row" style="margin-top:1rem;">
             <button class="btn btn-primary" id="btn-start" onclick="startCamera()" disabled>Iniciar Câmara</button>
             <button class="btn btn-danger" id="btn-stop" onclick="stopCamera()" disabled>Parar</button>
-             <button class="btn btn-secondary" id="btn-mute" onclick="toggleMute()">🔊 Voz</button>
+            <button class="btn btn-secondary" id="btn-mute" onclick="toggleMute()">🔊 Voz Ativa</button>
           </div>
         </div>
 
-        <!-- RESULTADOS -->
+        <!-- PAINEL DE RESULTADOS -->
         <div class="result-panel">
           <div class="result-box">
-            <div class="result-label">Gesto detetado</div>
+            <div class="result-label">Gesto Reconhecido</div>
             <div class="result-word" id="result-word">—</div>
-            <div class="result-conf" id="result-conf">confiança: —</div>
+            <div class="result-conf" id="result-conf">Confiança: —</div>
           </div>
 
-          <div class="card" style="margin:0; padding:1rem;">
-            <div class="card-title" style="margin-bottom:0.6rem;"><span>📊</span> Probabilidades</div>
+          <div class="card" style="margin:0; padding:1.25rem; background:rgba(0,0,0,0.15); border-color:var(--border);">
+            <div class="card-title" style="margin-bottom:0.75rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              Previsão de Probabilidades
+            </div>
             <div class="bar-list" id="bar-list">
-              <p style="font-size:0.78rem; color:var(--muted);">As barras aparecerão após carregar o modelo.</p>
+              <p style="font-size:0.8rem; color:var(--muted);">As métricas de predição surgirão após ativar o modelo.</p>
             </div>
           </div>
         </div>
       </div>
-
-      <div style="margin-top:1rem;">
-        <div class="card-title"><span>📝</span> Histórico desta sessão</div>
-        <div id="history" style="font-family:'DM Mono',monospace; font-size:0.82rem; color:var(--muted); min-height:2rem; line-height:2; word-spacing:0.4rem;">
-          (sem deteções ainda)
+      
+      <!-- Construtor de Frases Interativo -->
+      <div class="sentence-builder-card" style="margin-top:1.75rem; border-top: 1px solid var(--border); padding-top:1.5rem;">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          Construtor de Frases Interativo
         </div>
-        <button class="btn btn-secondary" style="margin-top:0.5rem; font-size:0.75rem; padding:0.4rem 0.8rem;" onclick="clearHistory()">Limpar histórico</button>
+        <p class="section-desc">Clique numa palavra (chip) no histórico para a remover individualmente da frase.</p>
+        
+        <div class="sentence-display">
+          <div class="sentence-text empty" id="sentence-text">A frase traduzida aparecerá aqui...</div>
+        </div>
+        
+        <div class="history-tags-container" id="history">
+          <span class="history-empty">(sem deteções ainda)</span>
+        </div>
+        
+        <div class="btn-row" style="flex-wrap: wrap;">
+          <button class="btn btn-secondary" onclick="falarFrase()">🔊 Ouvir Frase</button>
+          <button class="btn btn-secondary" onclick="copiarFrase()">📋 Copiar Frase</button>
+          <button class="btn" style="background:rgba(99, 102, 241, 0.12); border-color:var(--accent2); color:var(--text);" onclick="saveSentenceToBackend()">💾 Guardar no Servidor</button>
+          <button class="btn btn-danger" style="background:rgba(239, 68, 68, 0.08);" onclick="apagarUltimaPalavra()">⌫ Apagar Última</button>
+          <button class="btn btn-danger" onclick="clearHistory()">🗑️ Limpar Tudo</button>
+        </div>
+
+        <!-- Histórico Persistente (Python Backend API) -->
+        <div class="server-history-section" style="margin-top: 1.75rem; border-top: 1px dashed var(--border); padding-top: 1.25rem;">
+          <div class="card-subtitle" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+            <span style="font-family:'Syne', sans-serif; font-size:0.85rem; font-weight:700; color:#fff; display:flex; align-items:center; gap:6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Frases Guardadas no Servidor (Python API)
+            </span>
+            <button class="btn-clear-api" onclick="clearBackendHistory()" style="background:none; border:none; color:var(--danger); font-size:0.72rem; cursor:pointer; font-family:'DM Mono', monospace; display:flex; align-items:center; gap:3px;">
+              🗑️ Limpar Servidor
+            </button>
+          </div>
+          <div id="server-history-list" style="display:flex; flex-direction:column; gap:0.5rem; max-height:160px; overflow-y:auto; padding-right:4px;">
+            <p style="font-size:0.78rem; color:var(--muted); font-style:italic; margin:0.25rem 0;">Nenhuma frase persistente guardada no servidor.</p>
+          </div>
+        </div>
       </div>
     </div>
 
   </div>
 
   <!-- ════════════════════════════════════════
-       PAINEL 3 — GUIA
+       PAINEL 3 — GUIA DE TREINO LGP
   ════════════════════════════════════════ -->
   <div id="panel-guide" class="panel">
 
     <div class="card">
-      <div class="card-title"><span>🎓</span> Como usar o Teachable Machine — Passo a Passo</div>
-      <ul class="steps" style="gap:0.6rem;">
-        <li>Abre <strong>teachablemachine.withgoogle.com</strong> no Chrome</li>
-        <li>Clica em <strong>"Get Started"</strong> → <strong>"Image Project"</strong> → <strong>"Standard image model"</strong></li>
-        <li>Cada <strong>"Class"</strong> é uma letra ou palavra. Muda o nome clicando no título (ex: "Class 1" → "A")</li>
-        <li>Dentro de cada classe, clica em <strong>"Webcam"</strong> e mantém premido o botão para tirar fotos (mínimo 50)</li>
-        <li>Adiciona uma classe chamada <strong>"Nenhum"</strong> e tira fotos sem fazer nenhum gesto</li>
-        <li>Quando tiveres todas as classes, clica em <strong>"Train Model"</strong> no painel central</li>
-        <li>Aguarda o treino. Depois testa no painel "Preview" à direita</li>
-        <li>Se estiver bom: <strong>"Export Model"</strong> → <strong>"Tensorflow.js"</strong> → <strong>"Upload (shareable link)"</strong> → copia o URL</li>
-        <li>Cola esse URL no separador <strong>"Tradutor"</strong> desta app e clica "Carregar"</li>
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        Criação de Modelos Passo a Passo
+      </div>
+      <ul class="steps" style="gap:0.75rem;">
+        <li>Abra a plataforma <strong>teachablemachine.withgoogle.com</strong> no seu navegador (preferencialmente Google Chrome).</li>
+        <li>Selecione <strong>"Get Started"</strong> → <strong>"Image Project"</strong> → <strong>"Standard image model"</strong>.</li>
+        <li>Renomeie as classes para representar a letra ou gesto pretendido (ex: clique em "Class 1" e digite "A").</li>
+        <li>Prima o botão <strong>"Webcam"</strong> e mantenha pressionado o botão de captura para tirar imagens dos gestos (mínimo 50 por classe).</li>
+        <li>Adicione obrigatoriamente uma classe com o nome <strong>"Nenhum"</strong> e capture fotos neutras (apenas do fundo ou corpo relaxado).</li>
+        <li>Concluídas as classes, clique no botão central <strong>"Train Model"</strong>.</li>
+        <li>Teste o desempenho do reconhecimento no painel de "Preview" à direita.</li>
+        <li>Estando funcional: selecione <strong>"Export Model"</strong> → <strong>"Tensorflow.js"</strong> → <strong>"Upload (shareable link)"</strong> e copie a hiperligação gerada.</li>
+        <li>Insira esse link no painel <strong>"Tradutor"</strong> desta aplicação e clique em carregar.</li>
       </ul>
     </div>
 
     <div class="card">
-      <div class="card-title"><span>🖼</span> Recursos de Imagens para Treino</div>
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+        Recursos para Aprendizagem e Treino
+      </div>
       <div class="guide-grid">
         <div class="guide-card">
           <h3>Alfabeto Manual LGP</h3>
-          <p>Imagens do alfabeto gestual português para usar como dados adicionais de treino.</p>
-          <a href="https://www.infopedia.pt/dicionarios/lingua-gestual" target="_blank">Infopédia — LGP</a>
+          <p>Imagens e ilustrações do dicionário oficial da dactilologia portuguesa para usar como guias de treino.</p>
+          <a href="https://www.infopedia.pt/dicionarios/lingua-gestual" target="_blank">
+            Aceder à Infopédia
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></svg>
+          </a>
         </div>
         <div class="guide-card">
           <h3>Dataset ASL (Kaggle)</h3>
-          <p>Dataset grande de língua gestual americana. Útil para praticar, mesmo não sendo LGP.</p>
-          <a href="https://www.kaggle.com/datasets/grassknoted/asl-alphabet" target="_blank">kaggle.com (requer conta)</a>
+          <p>Repositório de dados volumoso para treinos e testes. Embora seja baseado no alfabeto americano (ASL), serve de boa base estrutural.</p>
+          <a href="https://www.kaggle.com/datasets/grassknoted/asl-alphabet" target="_blank">
+            Explorar Dataset
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></svg>
+          </a>
         </div>
         <div class="guide-card">
-          <h3>Associação Portuguesa Surdos</h3>
-          <p>Materiais oficiais e vídeos de referência em LGP.</p>
-          <a href="https://www.aps.pt" target="_blank">aps.pt</a>
+          <h3>Associação Portuguesa de Surdos</h3>
+          <p>Conteúdos informativos oficiais, regulamentos e guias de suporte à comunidade surda em Portugal.</p>
+          <a href="https://www.aps.pt" target="_blank">
+            Visitar a APS
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></svg>
+          </a>
         </div>
         <div class="guide-card">
           <h3>Spread the Sign</h3>
-          <p>Dicionário de gestos em vídeo, inclui LGP.</p>
-          <a href="https://www.spreadthesign.com/pt.pt/search/" target="_blank">spreadthesign.com</a>
+          <p>Excelente dicionário global de gestos em formato de vídeo, contendo suporte detalhado para LGP.</p>
+          <a href="https://www.spreadthesign.com/pt.pt/search/" target="_blank">
+            Pesquisar Gestos
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></svg>
+          </a>
         </div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title"><span>🔤</span> Alfabeto Manual Português (Dactilologia)</div>
-      <p style="font-size:0.8rem; color:var(--muted); margin-bottom:0.5rem;">Começa por treinar estas letras. Sugere-se começar com A, B, C, D, E.</p>
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+        Dactilologia LGP (Alfabeto Manual Português)
+      </div>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">Dica: comece por criar classes para as primeiras 5 letras do abecedário (A, B, C, D e E).</p>
       <div class="alphabet-grid" id="alpha-grid"></div>
     </div>
 
     <div class="card">
-      <div class="card-title"><span>✅</span> Boas Práticas para um Modelo Preciso</div>
-      <ul class="steps" style="gap:0.7rem;">
-        <li><strong>Quantidade:</strong> Pelo menos 50 fotos por classe. 100+ é melhor.</li>
-        <li><strong>Variedade de fundo:</strong> Tira fotos com fundo branco, fundo escuro, fundo com janela, etc.</li>
-        <li><strong>Variedade de luz:</strong> Com luz artificial, perto de janela, luz fraca.</li>
-        <li><strong>Ambas as mãos:</strong> Mão direita E mão esquerda, se possível.</li>
-        <li><strong>Vários alunos:</strong> Se dois alunos fotografam o mesmo gesto, o modelo generaliza melhor.</li>
-        <li><strong>Classe "Nenhum":</strong> Obrigatória! Sem ela, o modelo tenta sempre detetar algo.</li>
-        <li><strong>Iteração:</strong> Se o modelo erra sempre numa letra, adiciona mais fotos dessa letra e re-treina.</li>
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Recomendações para Obter Maior Precisão
+      </div>
+      <ul class="steps" style="gap:0.75rem;">
+        <li><strong>Volume de dados:</strong> Tente obter no mínimo 50 capturas por gesto. Quanto maior for o conjunto de dados, melhor será a deteção.</li>
+        <li><strong>Variação de cenários:</strong> Registe fotos alterando a distância do ecrã, a iluminação e os planos de fundo.</li>
+        <li><strong>Diversificação física:</strong> Registe gestos com a mão esquerda e direita, alterando ligeiramente a inclinação dos dedos.</li>
+        <li><strong>Trabalho cooperativo:</strong> Ao partilhar amostras de treino de várias pessoas, o modelo adquire uma robustez de deteção superior.</li>
+        <li><strong>A importância do "Nenhum":</strong> Esta classe evita que o modelo tente adivinhar gestos quando não está ninguém à frente da câmara.</li>
       </ul>
     </div>
 
   </div>
 
-  <!-- FOOTER -->
+  <!-- RODAPÉ -->
   <footer>
     <span>LGP Tradutor · Alt July 2026 · Coimbra</span>
     <div class="badge-stack">
       <span class="badge">TensorFlow.js</span>
       <span class="badge">Teachable Machine</span>
       <span class="badge">WebRTC</span>
-      <span class="badge">Zero instalações</span>
+      <span class="badge">Inclusão Digital</span>
     </div>
   </footer>
 
 </div>
 
 <script>
-// ══ STATE ══
+// ══ ESTADO DA APLICAÇÃO ══
 let model = null;
 let webcam = null;
 let animFrame = null;
@@ -696,23 +1428,38 @@ let isRunning = false;
 let history = [];
 let lastDetected = '';
 let lastDetectedTime = 0;
-const THRESHOLD = 0.75;
+let THRESHOLD = 0.75;
 const DEBOUNCE_MS = 1500;
 
-let vozAtiva = true;          // controla o botão mute
-let ultimaPalavraFalada = ''; // evita repetir a mesma palavra seguida
+let vozAtiva = true;          // Controlo da funcionalidade Text-to-Speech
+let ultimaPalavraFalada = ''; // Prevenção de repetição contínua de áudio
 
-// ══ TABS ══
+// ══ CONTROLO DA CAPA (WELCOME SCREEN) ══
+/**
+ * Fecha a tela de boas-vindas com uma animação de fade-out suave.
+ */
+function closeWelcomeScreen() {
+  document.getElementById('welcome-screen').classList.add('hidden');
+}
+
+// ══ NAVEGAÇÃO ENTRE TABS ══
+/**
+ * Alterna a visualização entre os diferentes painéis.
+ * @param {string} name - Identificador do painel ('roadmap', 'app', 'guide')
+ */
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => {
-    const panels = ['roadmap','app','guide'];
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const panels = ['roadmap', 'app', 'guide'];
     t.classList.toggle('active', panels[i] === name);
   });
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
 }
 
-// ══ ALPHABET GRID ══
+// ══ GERAÇÃO DA GRELHA DO ALFABETO ══
+/**
+ * Preenche a grelha visual com as letras de A a Z.
+ */
 (function() {
   const grid = document.getElementById('alpha-grid');
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(l => {
@@ -722,30 +1469,64 @@ function switchTab(name) {
   });
 })();
 
-// ══ LOAD MODEL ══
+// ══ CONTROLO E ATUALIZAÇÃO DO THRESHOLD ══
+/**
+ * Atualiza dinamicamente o valor do Threshold conforme a interação no slider range.
+ * @param {number} val - O valor lido (50 a 98)
+ */
+function updateThreshold(val) {
+  THRESHOLD = val / 100;
+  document.getElementById('threshold-val').textContent = val + '%';
+}
+
+// Inicializa o slider de Threshold aquando do carregamento da DOM
+document.addEventListener("DOMContentLoaded", () => {
+  const slider = document.getElementById('threshold-slider');
+  if (slider) {
+    slider.value = THRESHOLD * 100;
+    document.getElementById('threshold-val').textContent = (THRESHOLD * 100) + '%';
+  }
+});
+
+// ══ CARREGAMENTO DO MODELO DE ML ══
+/**
+ * Efetua a ligação e carregamento do modelo a partir do URL do Teachable Machine.
+ */
 async function loadModel() {
   const url = document.getElementById('model-url').value.trim();
-  if (!url) { setStatus('err', '❌ Cola um URL primeiro'); return; }
+  if (!url) { setStatus('err', '❌ Introduza um URL válido primeiro'); return; }
 
-  setStatus('loading', '⏳ A carregar modelo...');
+  setStatus('loading', '⏳ A ligar ao modelo...');
   try {
     const modelURL = url.endsWith('/') ? url + 'model.json' : url + '/model.json';
     const metaURL  = url.endsWith('/') ? url + 'metadata.json' : url + '/metadata.json';
     model = await tmImage.load(modelURL, metaURL);
-    setStatus('ok', '✅ Modelo carregado — ' + model.getTotalClasses() + ' classes');
+    setStatus('ok', '✅ Modelo carregado — ' + model.getTotalClasses() + ' classes detetadas');
     document.getElementById('btn-start').disabled = false;
     buildBars();
   } catch(e) {
-    setStatus('err', '❌ Erro: ' + e.message);
+    setStatus('err', '❌ Erro de conexão: ' + e.message);
   }
 }
 
+/**
+ * Atualiza a mensagem de estado do modelo utilizando o anel HUD pulsar.
+ * @param {string} type - Tipo de estado ('ok', 'loading', 'err')
+ * @param {string} msg - Texto informativo
+ */
 function setStatus(type, msg) {
-  const el = document.getElementById('model-status');
-  el.innerHTML = `<span class="status ${type} ${type==='loading'?'pulse':''}">${msg}</span>`;
+  const statusEl = document.getElementById('model-status');
+  const ring = statusEl.querySelector('.status-ring');
+  const text = statusEl.querySelector('.status-text');
+  
+  ring.className = 'status-ring ' + type;
+  text.textContent = msg;
 }
 
-// ══ BUILD BARS ══
+// ══ CONSTRUÇÃO DAS BARRAS DE PROBABILIDADE ══
+/**
+ * Cria a interface das barras com base nas classes fornecidas pelo modelo.
+ */
 function buildBars() {
   if (!model) return;
   const classes = model.getClassLabels();
@@ -762,10 +1543,14 @@ function buildBars() {
   });
 }
 
-// ══ CAMERA ══
+// ══ FLUXOS DA CÂMARA (WEBCAM) ══
+/**
+ * Liga e configura a captura de vídeo.
+ */
 async function startCamera() {
   if (!model) return;
   const wrap = document.getElementById('cam-wrap');
+  wrap.classList.add('active-cam'); // Ativa o laser scanner visual
 
   document.getElementById('cam-overlay').style.display = 'none';
 
@@ -780,21 +1565,29 @@ async function startCamera() {
   predict();
 }
 
+/**
+ * Desliga e limpa o fluxo de vídeo da câmara.
+ */
 function stopCamera() {
   isRunning = false;
   cancelAnimationFrame(animFrame);
   if (webcam) { webcam.stop(); webcam = null; }
   const wrap = document.getElementById('cam-wrap');
+  wrap.classList.remove('active-cam'); // Desativa o laser scanner visual
+  
   const canvas = wrap.querySelector('canvas');
   if (canvas) canvas.remove();
   document.getElementById('cam-overlay').style.display = 'flex';
   document.getElementById('btn-start').disabled = false;
   document.getElementById('btn-stop').disabled = true;
   document.getElementById('result-word').textContent = '—';
-  document.getElementById('result-conf').textContent = 'confiança: —';
+  document.getElementById('result-conf').textContent = 'Confiança: —';
 }
 
-// ══ PREDICT LOOP ══
+// ══ CICLO DE PREDIÇÃO E RECONHECIMENTO ══
+/**
+ * Executa a predição contínua da câmara através do TensorFlow.js.
+ */
 async function predict() {
   if (!isRunning || !model || !webcam) return;
   webcam.update();
@@ -802,7 +1595,7 @@ async function predict() {
   const preds = await model.predict(webcam.canvas);
   const best = preds.reduce((a,b) => a.probability > b.probability ? a : b);
 
-  // Update bars
+  // Atualização gráfica das barras e percentagens
   preds.forEach((p, i) => {
     const bar = document.getElementById('bar-' + i);
     const pct = document.getElementById('pct-' + i);
@@ -817,70 +1610,231 @@ async function predict() {
   const wordEl = document.getElementById('result-word');
   const confEl = document.getElementById('result-conf');
 
+  // Validação da probabilidade face ao limiar de segurança (Threshold)
   if (best.probability >= THRESHOLD && best.className.toLowerCase() !== 'nenhum') {
     wordEl.textContent = best.className;
     wordEl.classList.add('detected');
-    confEl.textContent = 'confiança: ' + Math.round(best.probability * 100) + '%';
+    confEl.textContent = 'Confiança: ' + Math.round(best.probability * 100) + '%';
 
     const now = Date.now();
     if (best.className !== lastDetected || now - lastDetectedTime > DEBOUNCE_MS) {
       lastDetected = best.className;
       lastDetectedTime = now;
       addToHistory(best.className);
-      falar(best.className);    // ← LINHA NOVA
+      falar(best.className);
     }
   } else {
     wordEl.textContent = '—';
     wordEl.classList.remove('detected');
-    confEl.textContent = 'confiança: abaixo do limiar';
+    confEl.textContent = 'Confiança: abaixo do limiar';
   }
 
   animFrame = requestAnimationFrame(predict);
 }
 
-// ══ HISTORY ══
+// ══ GESTÃO DO HISTÓRICO DE SESSÃO & CONSTRUTOR DE FRASES ══
+/**
+ * Adiciona um gesto reconhecido ao histórico e atualiza a frase formada.
+ * @param {string} word - Letra ou palavra reconhecida
+ */
 function addToHistory(word) {
   history.push(word);
-  const el = document.getElementById('history');
-  el.textContent = history.join('  ');
-  el.style.color = 'var(--text)';
+  renderHistory();
 }
 
+/**
+ * Remove uma palavra de uma posição específica no histórico.
+ * @param {number} index - Índice do elemento a remover
+ */
+function removeWordFromHistory(index) {
+  history.splice(index, 1);
+  renderHistory();
+}
+
+/**
+ * Remove a última palavra inserida no histórico.
+ */
+function apagarUltimaPalavra() {
+  if (history.length > 0) {
+    history.pop();
+    renderHistory();
+  }
+}
+
+/**
+ * Limpa o histórico de sessões e a frase.
+ */
 function clearHistory() {
   history = [];
-  const el = document.getElementById('history');
-  el.textContent = '(sem deteções ainda)';
-  el.style.color = 'var(--muted)';
+  renderHistory();
 }
 
-// ══ VOZ ══
+/**
+ * Copia a frase formada para a área de transferência do utilizador.
+ */
+function copiarFrase() {
+  if (history.length === 0) return;
+  const frase = history.join(' ');
+  navigator.clipboard.writeText(frase).then(() => {
+    const textEl = document.getElementById('sentence-text');
+    const originalText = textEl.textContent;
+    textEl.textContent = '📋 Frase copiada com sucesso!';
+    setTimeout(() => {
+      textEl.textContent = originalText;
+    }, 1500);
+  }).catch(err => {
+    console.error('Erro ao copiar frase: ', err);
+  });
+}
+
+/**
+ * Lê a frase inteira usando o sintetizador Web Speech API.
+ */
+function falarFrase() {
+  if (history.length === 0) return;
+  const frase = history.join(' ');
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(frase);
+  u.lang = 'pt-PT';
+  u.rate = 0.95;
+  u.pitch = 1;
+  u.volume = 1;
+  window.speechSynthesis.speak(u);
+}
+
+/**
+ * Reconstrói graficamente a zona de histórico (chips interactivos) e a frase formada.
+ */
+function renderHistory() {
+  const listEl = document.getElementById('history');
+  const textEl = document.getElementById('sentence-text');
+  
+  if (history.length === 0) {
+    listEl.innerHTML = '<span class="history-empty">(sem deteções ainda)</span>';
+    textEl.textContent = 'A frase traduzida aparecerá aqui...';
+    textEl.classList.add('empty');
+    return;
+  }
+  
+  // Atualiza a frase formada
+  textEl.textContent = history.join(' ');
+  textEl.classList.remove('empty');
+  
+  // Atualiza os chips interativos de palavra
+  listEl.innerHTML = history.map((word, idx) => 
+    `<span class="history-tag" onclick="removeWordFromHistory(${idx})">${word}</span>`
+  ).join('');
+}
+
+// ══ SÍNTESE DE VOZ (TEXT-TO-SPEECH PALAVRA A PALAVRA) ══
+/**
+ * Emite por voz a palavra ou letra reconhecida individualmente.
+ * @param {string} texto - Conteúdo para síntese vocal
+ */
 function falar(texto) {
   if (!vozAtiva) return;
-  if (texto === ultimaPalavraFalada) return; // não repetir a mesma
+  if (texto === ultimaPalavraFalada) return;
 
-  window.speechSynthesis.cancel(); // para qualquer fala anterior
+  window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(texto);
-  u.lang   = 'pt-PT';  // voz portuguesa
-  u.rate   = 0.9;      // velocidade (1 = normal, 0.8 = mais lento)
-  u.pitch  = 1;        // tom (1 = normal)
+  u.lang   = 'pt-PT';  // Sotaque de Portugal
+  u.rate   = 0.95;
+  u.pitch  = 1;
   u.volume = 1;
   window.speechSynthesis.speak(u);
 
   ultimaPalavraFalada = texto;
 }
 
+/**
+ * Ativa ou desativa a reprodução de voz de forma alternada.
+ */
 function toggleMute() {
   vozAtiva = !vozAtiva;
   if (!vozAtiva) window.speechSynthesis.cancel();
   const btn = document.getElementById('btn-mute');
-  btn.textContent = vozAtiva ? '🔊 Voz' : '🔇 Mudo';
+  btn.textContent = vozAtiva ? '🔊 Voz Ativa' : '🔇 Mudo';
   btn.style.opacity = vozAtiva ? '1' : '0.5';
 }
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+// ══ INTEGRAÇÃO COM BACKEND PYTHON (API DE HISTÓRICO) ══
+/**
+ * Faz o fetch das frases guardadas no servidor Python e desenha na lista.
+ */
+async function loadSavedSentences() {
+  try {
+    const res = await fetch('/api/history');
+    if (!res.ok) throw new Error('Falha ao comunicar com o servidor');
+    const data = await res.json();
+    const listEl = document.getElementById('server-history-list');
+    if (!listEl) return;
+    
+    if (data.length === 0) {
+      listEl.innerHTML = '<p style="font-size:0.78rem; color:var(--muted); font-style:italic; margin:0.25rem 0;">Nenhuma frase persistente guardada no servidor.</p>';
+      return;
+    }
+    
+    listEl.innerHTML = data.map(item => `
+      <div class="server-history-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.01); border:1px solid var(--border); padding:0.5rem 0.75rem; border-radius:var(--radius-sm); margin-bottom:0.25rem;">
+        <span style="font-size:0.8rem; color:#fff; word-break:break-all;">"${item.phrase}"</span>
+        <span style="font-family:'DM Mono', monospace; font-size:0.65rem; color:var(--muted); flex-shrink:0; margin-left:10px;">${item.timestamp}</span>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('Erro ao carregar histórico do servidor:', err);
+  }
 }
 
+/**
+ * Envia a frase atual do construtor de frases para ser guardada no servidor.
+ */
+async function saveSentenceToBackend() {
+  if (history.length === 0) return;
+  const frase = history.join(' ');
+  try {
+    const res = await fetch('/api/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phrase: frase })
+    });
+    if (!res.ok) throw new Error('Erro ao salvar frase');
+    // Atualizar a listagem local
+    await loadSavedSentences();
+  } catch (err) {
+    console.error('Erro ao gravar no servidor:', err);
+  }
+}
+
+/**
+ * Limpa todo o histórico de frases persistentes no servidor.
+ */
+async function clearBackendHistory() {
+  if (!confirm("Tem a certeza que deseja limpar as frases guardadas no servidor?")) return;
+  try {
+    const res = await fetch('/api/history', { method: 'DELETE' });
+    if (!res.ok) throw new Error('Erro ao limpar histórico do servidor');
+    await loadSavedSentences();
+  } catch (err) {
+    console.error('Erro ao limpar servidor:', err);
+  }
+}
+
+// Ocultar barra de tabs quando o teclado virtual abre (foco em inputs em tablets/telemóveis)
+document.addEventListener("DOMContentLoaded", () => {
+  loadSavedSentences();
+  const inputs = document.querySelectorAll('input');
+  const tabsBar = document.querySelector('.tabs');
+  if (tabsBar) {
+    inputs.forEach(input => {
+      input.addEventListener('focus', () => {
+        tabsBar.style.display = 'none';
+      });
+      input.addEventListener('blur', () => {
+        tabsBar.style.display = 'inline-flex';
+      });
+    });
+  }
+});
 </script>
 </body>
 </html>
