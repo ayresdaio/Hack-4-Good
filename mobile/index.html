@@ -1192,6 +1192,7 @@
             <button class="btn btn-danger" id="btn-stop" onclick="stopCamera()" disabled>Parar</button>
             <button class="btn btn-secondary" id="btn-mute" onclick="toggleMute()">🔊 Voz Ativa</button>
           </div>
+          <canvas id="hud-waveform" class="hud-waveform" style="width:100%; height:50px; display:block; margin-top:1rem; border:1px solid rgba(0, 229, 160, 0.2); border-radius:4px; background:rgba(2, 5, 15, 0.4);"></canvas>
         </div>
 
         <!-- PAINEL DE RESULTADOS -->
@@ -1770,9 +1771,67 @@ async function clearBackendHistory() {
   }
 }
 
+// Função para animar a onda néon HUD no Canvas
+function animateHUDWaveform() {
+  const canvas = document.getElementById('hud-waveform');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let width = (canvas.width = canvas.clientWidth);
+  let height = (canvas.height = canvas.clientHeight);
+  
+  let phase = 0;
+  
+  function draw() {
+    if (!canvas) return;
+    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+      width = canvas.width = canvas.clientWidth;
+      height = canvas.height = canvas.clientHeight;
+    }
+    
+    ctx.clearRect(0, 0, width, height);
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 4;
+    
+    // 3 ondas com tons néon verde e azul
+    const waves = [
+      { amplitude: 10, frequency: 0.015, color: '#00e5a0', speed: 0.08, opacity: 0.8 },
+      { amplitude: 6, frequency: 0.025, color: '#6366f1', speed: -0.05, opacity: 0.5 },
+      { amplitude: 14, frequency: 0.008, color: '#00e5a0', speed: 0.03, opacity: 0.3 }
+    ];
+    
+    phase += 0.5;
+    
+    waves.forEach(w => {
+      ctx.beginPath();
+      ctx.strokeStyle = w.color;
+      ctx.globalAlpha = w.opacity;
+      ctx.shadowColor = w.color;
+      
+      for (let x = 0; x < width; x++) {
+        // Amplitude aumenta se o tradutor/webcam estiver ligado
+        const activeMultiplier = isRunning ? 1.5 : 0.6;
+        const y = height / 2 + Math.sin(x * w.frequency + (phase * w.speed)) * w.amplitude * activeMultiplier;
+        if (x === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+    });
+    
+    ctx.globalAlpha = 1.0;
+    ctx.shadowBlur = 0;
+    requestAnimationFrame(draw);
+  }
+  
+  draw();
+}
+
 // Ocultar barra de tabs quando o teclado do telemóvel abre (foco em inputs)
 document.addEventListener("DOMContentLoaded", () => {
   loadSavedSentences();
+  animateHUDWaveform();
   const inputs = document.querySelectorAll('input');
   const tabsBar = document.querySelector('.tabs');
   if (tabsBar) {
