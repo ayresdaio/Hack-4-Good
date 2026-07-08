@@ -11,7 +11,11 @@ import datetime
 
 # Cópia em memória para fallback caso o sistema de ficheiros seja apenas de leitura
 _memory_history = []
-DATABASE = os.path.join(os.path.dirname(__file__), 'history.db')
+# Se estiver no Render com disco persistente, o disco é montado em /data
+if os.path.exists('/data'):
+    DATABASE = '/data/history.db'
+else:
+    DATABASE = os.path.join(os.path.dirname(__file__), 'history.db')
 
 def init_db():
     """Inicializa a base de dados SQLite e cria a tabela se não existir."""
